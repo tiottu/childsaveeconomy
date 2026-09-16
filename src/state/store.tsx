@@ -49,8 +49,8 @@ type StoreValue = {
   deviceRole: DeviceRole | null
   /** 클라우드 모드인데 아직 가족에 붙지 않았다 */
   needsJoin: boolean
-  /** 가입을 마친 뒤 부른다 */
-  refreshMembership: () => Promise<void>
+  /** 가입을 마친 뒤 부른다. 이 기기가 쓸 준비가 됐으면 true. */
+  refreshMembership: () => Promise<boolean>
 }
 
 const empty: Data = {
@@ -80,7 +80,7 @@ const StoreContext = createContext<StoreValue>({
   membership: null,
   deviceRole: null,
   needsJoin: false,
-  refreshMembership: async () => {},
+  refreshMembership: async () => true,
 })
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -127,8 +127,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refreshMembership = useCallback(async () => {
-    if (!hasSupabaseConfig) return
+  /** 이 기기가 쓸 준비가 됐는지 돌려준다. false 면 가입 화면으로 보내야 한다. */
+  const refreshMembership = useCallback(async (): Promise<boolean> => {
+    if (!hasSupabaseConfig) return true
     // 로컬 모드에서는 supabase-js 를 아예 내려받지 않도록 동적으로 가져온다
     const { currentUserId, getMembership } = await import('../lib/auth')
     const userId = await currentUserId()
@@ -136,12 +137,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMembership(m)
 
     // 이메일을 공유하는 가족이면 기기 등록이 모드를 정한다.
-    // 0009 가 아직 안 올라간 서버에서는 null 이고, membership 이 모드를 정한다.
-    const role = m ? await (await import('../lib/device')).myDeviceRole() : null
+    const device = await import('../lib/device')
+    const role = m ? await device.myDeviceRole() : null
     setDeviceRole(role)
 
-    // 부모는 가족 연결 후에도 기기 등록이 남아 있으면 그때까지 가입 화면에 머문다
-    setNeedsJoin(m === null)
+    /**
+     * 기기 등록이 필요한가.
+     *
+     * 부모는 이메일 계정 하나를 가족이 공유한다. 그래서 member 행도 하나뿐이고,
+     * 그것만으로는 이 핸드폰이 엄마인지 아빠인지 알 수 없다. 등록이 없으면
+     * "이 핸드폰은 누구예요?" 로 보내야 한다.
+     *
+     * 이 검사가 없었을 때 이렇게 됐다: 엄마 폰에서 엄마로, 아빠 폰에서 아빠로 붙은 뒤
+     * 엄마 폰을 다시 열면 **아빠 모드로 보였다.** 등록이 없는 기기가 그냥 들어가서
+     * 공유된 member.label(마지막에 합류한 사람 = 아빠)을 자기 이름표로 쓴 탓이다.
+     *
+     * 아이가 가족 코드로 붙은 경우는 익명 계정이라 계정 자체가 그 기기 것이다.
+     * 그쪽은 member 만으로 충분하고, 등록을 요구하면 들어갈 방법이 없어진다.
+     */
+    const sharedAccount = m?.email != null
+    const needsDevice =
+      sharedAccount && role === null && (await device.deviceFeatureAvailable())
+
+    const join = m === null || needsDevice
+    setNeedsJoin(join)
+    return !join
   }, [])
 
   useEffect(() => {
@@ -154,20 +174,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 부모는 이메일 인증으로 로그인하므로 여기서 계정을 만들지 않는다.
         // 세션이 없으면 가입 화면이 뜨고, 거기서 이메일 인증이나 익명 로그인을 한다.
         if (hasSupabaseConfig) {
-          const { currentUserId, getMembership } = await import('../lib/auth')
-          const userId = await currentUserId()
-          const m = userId ? await getMembership() : null
+          // 가입 여부 판단은 refreshMembership 한 곳에만 둔다.
+          // 예전에는 이 초기 경로가 같은 일을 따로 구현하고 있었고, 그래서 한쪽만
+          // 고치면 다른 쪽이 옛 규칙으로 돌았다 — 등록 없는 기기가 그냥 들어가 버렸다.
+          const joined = await refreshMembership()
           if (cancelled) return
-          setMembership(m)
-          if (m) {
-            const { myDeviceRole } = await import('../lib/device')
-            const role = await myDeviceRole()
-            if (cancelled) return
-            setDeviceRole(role)
-          }
-          setNeedsJoin(m === null)
-          if (m === null) {
-            // 아직 가족에 붙지 않았다. 데이터를 읽어봐야 전부 빈 결과다.
+          if (!joined) {
+            // 아직 이 기기가 가족에 붙지 않았다. 데이터를 읽어봐야 전부 빈 결과다.
             setLoading(false)
             return
           }
