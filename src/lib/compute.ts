@@ -14,11 +14,20 @@ export function cashBalance(txns: CashTxn[]): number {
   return txns.reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
 }
 
-/** 이번 달 현금 증감 */
+/**
+ * 이번 달 **모은 돈**. 넣은 돈에서 쓴 돈을 뺀 값이다.
+ *
+ * 주식을 사서 나간 돈은 빼지 않는다. 그건 쓴 게 아니라 현금 주머니에서 투자 주머니로
+ * 옮긴 것이고, 총자산은 그대로다. 빼면 "용돈 40만 받고 주식 25만 샀는데 이번달 모은 돈이
+ * 15만" 처럼 나와서, 아이 눈에는 돈을 써버린 것처럼 읽힌다. 실제로 그렇게 나왔다.
+ *
+ * 매매로 생긴 현금 기록은 trade_id 를 갖고 있으니 그것만 걸러내면 된다.
+ * 월별 차트(history.ts)도 같은 규칙으로 그린다.
+ */
 export function monthlyChange(txns: CashTxn[], now = new Date()): number {
   const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   return txns
-    .filter((t) => t.occurred_on.startsWith(prefix))
+    .filter((t) => t.occurred_on.startsWith(prefix) && !t.trade_id)
     .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
 }
 
