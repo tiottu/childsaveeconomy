@@ -1,8 +1,19 @@
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import App from './App'
+import { SessionProvider } from './state/session'
+import { StoreProvider } from './state/store'
+import './styles.css'
 
-createRoot(document.getElementById('root')!).render(
-  <div style={{ fontFamily: 'sans-serif', padding: 40, textAlign: 'center' }}>
-    <h1>빌드 성공</h1>
-    <p>GitHub 이 빌드해서 배포하는 길이 열렸습니다.</p>
-  </div>,
+const root = document.getElementById('root')
+if (!root) throw new Error('#root 를 찾을 수 없습니다')
+
+createRoot(root).render(
+  <StrictMode>
+    <StoreProvider>
+      <SessionProvider>
+        <App />
+      </SessionProvider>
+    </StoreProvider>
+  </StrictMode>,
 )
