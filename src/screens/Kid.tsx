@@ -1,7 +1,10 @@
 import { AssetChart } from '../components/AssetChart'
+import { EMBLEMS, EmblemTile, emblemOf, type EmblemKey } from '../components/Emblem'
 import { ProgressBar, TickerBadge, colorOf } from '../components/ui'
 import { monthlyChange } from '../lib/compute'
 import { monthlyHistory } from '../lib/history'
+import { badgesOf, levelOf, savingStreak, type Level } from '../lib/profile'
+import type { Child } from '../lib/types'
 import {
   ageFrom,
   asOfLabel,
@@ -13,8 +16,9 @@ import {
   signed,
   weekdayName,
 } from '../lib/format'
+import { useState } from 'react'
 import { useSession } from '../state/session'
-import { useData } from '../state/store'
+import { useData, useStore } from '../state/store'
 
 /** 종목을 아이 말로 한 줄 설명. 모르는 종목은 설명을 생략한다. */
 const EXPLAIN: Record<string, string> = {
@@ -24,33 +28,78 @@ const EXPLAIN: Record<string, string> = {
   '069500.KS': '한국의 큰 회사 200곳 묶음',
 }
 
+/** 이름·레벨·칭호·경험치. 아이 화면 맨 위에 항상 같은 모양으로 둔다. */
+function ProfileCard({ child, level }: { child: Child; level: Level }) {
+  const k = emblemOf(child)
+  return (
+    <div className="profile">
+      <div className="profile-top">
+        <EmblemTile k={k} size={56} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="row" style={{ gap: 6, justifyContent: 'flex-start' }}>
+            <span className="profile-name">{child.name}</span>
+            <span className="chip">Lv.{level.level}</span>
+          </div>
+          <div className="label">{level.title}</div>
+        </div>
+      </div>
+      <div className="profile-xp">
+        <div className="row label">
+          <span>다음 레벨까지</span>
+          <span>도장 {level.toNext}개</span>
+        </div>
+        <ProgressBar pct={level.pct} color="var(--accent-fill)" />
+      </div>
+    </div>
+  )
+}
+
 export function KidHome({ childId }: { childId: string }) {
-  const { children, assets, cash, trades } = useData()
+  const { children, assets, cash, trades, stamps, rewards, goals } = useData()
   const child = children.find((c) => c.id === childId)
   const asset = assets.find((a) => a.child_id === childId)
   const txns = cash[childId] ?? []
-  const history = monthlyHistory(txns, trades[childId] ?? [])
+  const myTrades = trades[childId] ?? []
+  const history = monthlyHistory(txns, myTrades)
 
   if (!child || !asset) return <div className="empty">정보를 찾을 수 없어요</div>
 
-  const color = colorOf(children.findIndex((c) => c.id === childId))
   const month = monthlyChange(txns)
   const days = daysUntilPayday(child.payday)
+  const myStamps = stamps.filter((s) => s.child_id === childId)
+  const lv = levelOf(myStamps)
+  const streak = savingStreak(txns)
+  const badges = badgesOf({
+    asset,
+    cash: txns,
+    trades: myTrades,
+    stamps: myStamps,
+    rewards: rewards.filter((r) => r.child_id === childId),
+    goals: goals.filter((g) => g.child_id === childId),
+    streak,
+  })
+  const earned = badges.filter((b) => b.earned).length
 
   return (
     <>
-      <div
-        className="card"
-        style={{ textAlign: 'center', background: color.bg, borderColor: 'transparent' }}
-      >
-        <div className="label" style={{ color: color.fg }}>
-          내 전체 재산
+      <ProfileCard child={child} level={lv} />
+
+      <div className="stat-grid">
+        <div className="stat">
+          <div className="label">내 전체 재산</div>
+          <div className="stat-value">{money(asset.total)}</div>
         </div>
-        <div className="big" style={{ color: color.fg }}>
-          {money(asset.total)}
+        <div className="stat">
+          <div className="label">이번달 모은 돈</div>
+          <div className={`stat-value ${month >= 0 ? 'up' : 'down'}`}>{signed(month)}</div>
         </div>
-        <div className="label" style={{ color: color.fg }}>
-          현금 {money(asset.cash)} · 주식 {money(asset.invest)}
+        <div className="stat">
+          <div className="label">연속 저축</div>
+          <div className="stat-value">{streak}주</div>
+        </div>
+        <div className="stat">
+          <div className="label">모은 도장</div>
+          <div className="stat-value">{lv.xp}</div>
         </div>
       </div>
 
@@ -62,12 +111,21 @@ export function KidHome({ childId }: { childId: string }) {
         <div className="mid">{days}일</div>
       </div>
 
-      <div className="card row">
-        <div>
-          <div>이번달 모은 돈</div>
-          <div className="label">{new Date().getMonth() + 1}월</div>
-        </div>
-        <div className={`mid ${month >= 0 ? 'up' : 'down'}`}>{signed(month)}</div>
+      <div className="section-title">
+        업적 {earned} / {badges.length}
+      </div>
+      <div className="badge-grid">
+        {/*
+          잠긴 업적에는 설명을 붙이지 않는다. 좁은 화면에서 두세 줄로 접히면서 칸 높이가
+          들쭉날쭉해지고, 무엇보다 이름만으로 이미 무엇을 해야 하는지 알 수 있다
+          ("50만 돌파", "4주 연속"). 채운 별과 빈 별로 상태를 구분한다.
+        */}
+        {badges.map((b) => (
+          <div key={b.key} className={b.earned ? 'badge' : 'badge locked'}>
+            <div className="badge-mark">{b.earned ? '★' : '☆'}</div>
+            <div className="badge-label">{b.label}</div>
+          </div>
+        ))}
       </div>
 
       {history.length >= 2 && (
@@ -222,8 +280,10 @@ export function KidInvest({ childId }: { childId: string }) {
 }
 
 export function KidProfile({ childId }: { childId: string }) {
-  const { children, assets, settings, goals } = useData()
+  const { children, assets, settings, goals, stamps } = useData()
+  const { db, reload } = useStore()
   const { signOut, modeIsFixed } = useSession()
+  const [saving, setSaving] = useState(false)
 
   const child = children.find((c) => c.id === childId)
   const asset = assets.find((a) => a.child_id === childId)
@@ -231,28 +291,54 @@ export function KidProfile({ childId }: { childId: string }) {
 
   if (!child || !asset) return <div className="empty">정보를 찾을 수 없어요</div>
 
-  const color = colorOf(children.findIndex((c) => c.id === childId))
+  const current = emblemOf(child)
+  const lv = levelOf(stamps.filter((s) => s.child_id === childId))
+
+  const [emblemError, setEmblemError] = useState<string | null>(null)
+
+  async function pickEmblem(k: EmblemKey) {
+    if (!db || saving || k === child!.emblem) return
+    setSaving(true)
+    setEmblemError(null)
+    try {
+      await db.setEmblem(childId, k)
+      await reload()
+    } catch (e) {
+      setEmblemError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <>
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div
-          className="avatar"
-          style={{
-            background: color.bg,
-            color: color.fg,
-            width: 56,
-            height: 56,
-            fontSize: 15,
-            margin: '0 auto 8px',
-          }}
-        >
-          {child.name}
-        </div>
-        <div style={{ fontWeight: 500 }}>{child.name}</div>
-        <div className="label">
-          {ageFrom(child.birth_year)}
-          {child.birth_year && ` · ${child.birth_year}년생`}
+      <ProfileCard child={child} level={lv} />
+
+      <div className="section-title">엠블럼 고르기</div>
+      <div className="emblem-grid">
+        {EMBLEMS.map((e) => (
+          <div key={e.key} style={{ textAlign: 'center' }}>
+            <EmblemTile
+              k={e.key}
+              size={60}
+              selected={e.key === current}
+              onClick={() => void pickEmblem(e.key)}
+            />
+            <div className="label" style={{ marginTop: 2 }}>
+              {e.name}
+            </div>
+          </div>
+        ))}
+      </div>
+      {emblemError && <div className="error">{emblemError}</div>}
+      <div className="label muted">누르면 바로 바뀌어요. 부모님 화면에도 이 엠블럼이 보여요.</div>
+
+      <div className="card">
+        <div className="list-item">
+          <span>나이</span>
+          <span className="label">
+            {child.birth_year ? `${ageFrom(child.birth_year)} · ${child.birth_year}년생` : '모름'}
+          </span>
         </div>
       </div>
 
