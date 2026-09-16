@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Field, TickerBadge, Toggle } from '../components/ui'
-import { FX_TICKER, toKrw } from '../lib/compute'
+import { FX_TICKER, familyTickers, toKrw } from '../lib/compute'
 import { dayLabel, money, qty, unitPrice } from '../lib/format'
 import { useData, useStore } from '../state/store'
 import type { Quote, TradeRequest } from '../lib/types'
@@ -29,6 +29,8 @@ type Candidate = {
 function candidates(
   positions: { ticker: string; name: string; price: number; currency: string; quantity: number }[],
   quotes: Quote[],
+  /** 우리 가족이 쓰는 종목 코드. quote 표는 모든 가족이 같이 쓰는 캐시다. */
+  mine: Set<string>,
 ): Candidate[] {
   const list: Candidate[] = positions.map((p) => ({
     ticker: p.ticker,
@@ -40,6 +42,8 @@ function candidates(
   for (const q of quotes) {
     // 환율은 종목이 아니다
     if (q.ticker === FX_TICKER) continue
+    // 다른 집이 조회한 종목을 우리 아이 화면에 보여주면 안 된다
+    if (!mine.has(q.ticker)) continue
     if (list.some((c) => c.ticker === q.ticker)) continue
     list.push({
       ticker: q.ticker,
@@ -66,7 +70,7 @@ function label(r: TradeRequest): string {
 // ---------------------------------------------------------------- 아이
 
 export function KidTradeRequest({ childId }: { childId: string }) {
-  const { positions, quotes, assets, tradeRequests } = useData()
+  const { positions, quotes, assets, tradeRequests, trades } = useData()
   const { db, reload } = useStore()
 
   const [direction, setDirection] = useState<'buy' | 'sell'>('buy')
@@ -78,7 +82,7 @@ export function KidTradeRequest({ childId }: { childId: string }) {
   const [sent, setSent] = useState(false)
 
   const asset = assets.find((a) => a.child_id === childId)
-  const all = candidates(positions[childId] ?? [], quotes)
+  const all = candidates(positions[childId] ?? [], quotes, familyTickers(positions, trades))
   // 팔 수 있는 건 가진 것뿐이다
   const list = direction === 'sell' ? all.filter((c) => c.held > 0) : all
 

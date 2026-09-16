@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
 import { Field } from '../components/ui'
+import { familyTickers } from '../lib/compute'
 import type { RegisteredDevice } from '../lib/device'
 import { asOfLabel, money, num, weekdayName } from '../lib/format'
 import { PARENT_KEY, PIN_LENGTH, useSession } from '../state/session'
@@ -28,6 +29,10 @@ export function Settings() {
   /** 백업 결과 한 줄. 공유를 취소하면 아무 말도 하지 않는다. */
   const [saved, setSaved] = useState<string | null>(null)
   const [backing, setBacking] = useState(false)
+
+  /** 우리 집 종목의 시세만. quote 표는 모든 가족이 같이 쓰는 캐시다. */
+  const myTickers = familyTickers(positions, trades)
+  const myQuotes = quotes.filter((q) => myTickers.has(q.ticker))
 
   const cashCount = Object.values(cash).reduce((s, l) => s + l.length, 0)
   const tradeCount = Object.values(trades).reduce((s, l) => s + l.length, 0)
@@ -361,9 +366,16 @@ export function Settings() {
         </div>
       )}
 
+      {/*
+        시세 표는 가족 구분이 없는 공용 캐시다. 그대로 늘어놓으면 다른 집이 조회한
+        종목까지 보였다 — 우리 집이 들고 있거나 거래한 것만 보여준다.
+      */}
       <div className="section-title">시세</div>
+      {myQuotes.length === 0 ? (
+        <div className="empty">아직 등록된 종목이 없습니다</div>
+      ) : (
       <div className="card">
-        {quotes.map((q) => (
+        {myQuotes.map((q) => (
           <div key={q.ticker} className="list-item">
             <div>
               <div>{q.name ?? q.ticker}</div>
@@ -375,15 +387,18 @@ export function Settings() {
           </div>
         ))}
       </div>
-      <button
-        className="btn dashed"
-        onClick={() => {
-          setQuoteTicker(quotes[0]?.ticker ?? '')
-          open('quote')
-        }}
-      >
-        현재가 직접 입력
-      </button>
+      )}
+      {myQuotes.length > 0 && (
+        <button
+          className="btn dashed"
+          onClick={() => {
+            setQuoteTicker(myQuotes[0]?.ticker ?? '')
+            open('quote')
+          }}
+        >
+          현재가 직접 입력
+        </button>
+      )}
 
       {editing === 'quote' && (
         <div className="card col">
@@ -393,7 +408,7 @@ export function Settings() {
               value={quoteTicker}
               onChange={(e) => setQuoteTicker(e.target.value)}
             >
-              {quotes.map((q) => (
+              {myQuotes.map((q) => (
                 <option key={q.ticker} value={q.ticker}>
                   {q.name ?? q.ticker}
                 </option>

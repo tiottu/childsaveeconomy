@@ -1,4 +1,4 @@
-import type { CashTxn, ChildAsset, Child, Holding, Position, Quote } from './types'
+import type { CashTxn, ChildAsset, Child, Holding, Position, Quote, Trade } from './types'
 
 /** 원/달러 환율 티커. 네이버 reutersCode 기준. */
 export const FX_TICKER = 'FX_USDKRW'
@@ -8,6 +8,42 @@ export function toKrw(amount: number, currency: string, quotes: Quote[]): number
   if (currency === 'KRW') return amount
   const fx = quotes.find((q) => q.ticker === FX_TICKER)
   return fx ? amount * fx.price : 0
+}
+
+/**
+ * 이 가족이 쓰는 종목 코드.
+ *
+ * quote 표에는 가족 구분이 없다 — 한 종목을 누가 한 번 받아오면 모두가 그 값을
+ * 같이 쓰는 공용 캐시다 (시세는 어느 집에서나 같은 값이고, 한 번만 받는 게 맞다).
+ *
+ * 그래서 그 표를 그대로 늘어놓으면 **다른 집이 조회한 종목까지 다 보인다.**
+ * 화면에는 우리 집이 지금 들고 있거나 한 번이라도 거래한 것만 보여준다.
+ * 팔아서 지금은 없는 종목도 남긴다 — 다시 사고 싶을 수 있다.
+ */
+export function familyTickers(
+  positions: Record<string, Position[]>,
+  trades: Record<string, Trade[]>,
+): Set<string> {
+  const mine = new Set<string>()
+  let foreign = false
+
+  for (const list of Object.values(positions)) {
+    for (const p of list) {
+      mine.add(p.ticker)
+      if (p.currency !== 'KRW') foreign = true
+    }
+  }
+  for (const list of Object.values(trades)) {
+    for (const t of list) {
+      mine.add(t.ticker)
+      // 네이버 reutersCode 는 국내가 숫자 6자리, 해외는 AAPL.O 처럼 점이 들어간다
+      if (t.ticker.includes('.')) foreign = true
+    }
+  }
+
+  // 해외 종목이 있으면 환율도 우리 것이다. 원화 환산에 쓰니 화면에 보여야 한다.
+  if (foreign) mine.add(FX_TICKER)
+  return mine
 }
 
 export function cashBalance(txns: CashTxn[]): number {
