@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Field, Toggle } from '../components/ui'
+import { Field, ProgressBar, Toggle } from '../components/ui'
 import { dayLabel } from '../lib/format'
 import { useData, useStore } from '../state/store'
 import type { Reward, Stamp } from '../lib/types'
@@ -314,30 +314,27 @@ export function KidStamps({ childId }: { childId: string }) {
 
   return (
     <>
-      <div
-        className="card"
-        style={{
-          textAlign: 'center',
-          background: 'var(--warning-bg)',
-          borderColor: 'var(--warning-border)',
-        }}
-      >
-        <div className="label" style={{ color: 'var(--warning-text)' }}>
-          칭찬도장
+      <div className="quest">
+        <div className="row" style={{ alignItems: 'baseline' }}>
+          <span className="quest-title">보상까지</span>
+          <span className="quest-count">
+            {given.length} / {goal}
+          </span>
         </div>
-        <div style={{ margin: '12px 0' }}>
-          <Board count={given.length} goal={goal} big />
+        <div style={{ margin: '10px 0' }}>
+          <ProgressBar
+            pct={goal > 0 ? (given.length / goal) * 100 : 0}
+            color="var(--accent-fill)"
+          />
         </div>
-        <div className="big" style={{ color: 'var(--warning-text)' }}>
-          {given.length} / {goal}
-        </div>
-        <div style={{ color: 'var(--warning-text)', fontSize: 14, marginTop: 2 }}>
-          {left === 0 ? '선물 받을 수 있어요!' : `${left}개만 더 모으면 선물!`}
+        <Board count={given.length} goal={goal} big />
+        <div className="label" style={{ marginTop: 10 }}>
+          {left === 0 ? '보상을 받을 수 있어요' : `도장 ${left}개 남았어요`}
         </div>
       </div>
 
-      <div className="section-title">칭찬도장 받고 싶어요</div>
-      <Field label="무엇을 잘했어요?">
+      <div className="section-title">도장 신청</div>
+      <Field label="무엇을 잘했는지 적기">
         <input
           className="field"
           type="text"
@@ -353,15 +350,13 @@ export function KidStamps({ childId }: { childId: string }) {
       </Field>
       {error && <div className="error">{error}</div>}
       <button className="btn primary" disabled={busy} onClick={() => void request()}>
-        {busy ? '보내는 중…' : '도장 신청하기'}
+        {busy ? '보내는 중…' : '신청 보내기'}
       </button>
-      {sent && !error && (
-        <div className="label muted">보냈어요. 부모님이 보시면 도장을 찍어 주실 거예요.</div>
-      )}
+      {sent && !error && <div className="label muted">보냈어요. 부모님이 확인하면 도장이 들어와요.</div>}
 
       {history.length > 0 && (
         <>
-          <div className="section-title">내가 신청한 것</div>
+          <div className="section-title">신청 기록</div>
           <div className="card">
             {history.map((s) => (
               <div key={s.id} className="list-item">
@@ -376,16 +371,16 @@ export function KidStamps({ childId }: { childId: string }) {
                 >
                   {s.reason || (s.asked_by === 'parent' ? '부모님이 주신 도장' : '칭찬도장')}
                 </span>
-                {s.status === 'requested' && <span className="chip">기다리는 중</span>}
-                {s.status === 'given' && <span className="chip green">받았어요</span>}
-                {s.status === 'rejected' && <span className="chip gray">다음에</span>}
+                {s.status === 'requested' && <span className="chip amber">심사 중</span>}
+                {s.status === 'given' && <span className="chip green">통과</span>}
+                {s.status === 'rejected' && <span className="chip gray">다음 기회</span>}
               </div>
             ))}
           </div>
         </>
       )}
 
-      <RewardList rewards={mine} title="받은 선물" />
+      <RewardList rewards={mine} title="받은 보상" />
     </>
   )
 }
