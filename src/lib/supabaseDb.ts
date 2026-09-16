@@ -10,12 +10,24 @@ import type {
   NewCashTxn,
   NewTrade,
   Quote,
+  Reward,
   Settings,
+  Stamp,
   Trade,
 } from './types'
 
 /** 실시간 구독 대상. 하나라도 바뀌면 화면을 다시 읽는다. */
-const WATCHED = ['cash_txn', 'trade', 'holding', 'quote', 'goal', 'child'] as const
+const WATCHED = [
+  'cash_txn',
+  'trade',
+  'holding',
+  'quote',
+  'goal',
+  'child',
+  // 부모가 도장을 찍으면 아이 핸드폰이 새로고침 없이 바뀐다. 그 반대도 마찬가지다.
+  'stamp',
+  'reward',
+] as const
 
 function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message)
@@ -86,7 +98,9 @@ export function createSupabaseDb(): Db {
       const rows = unwrap<Settings[]>(
         await sb
           .from('settings')
-          .select('interest_rate, interest_cycle, quote_refresh_min, invest_cap_pct, dividend_to_cash')
+          .select(
+            'interest_rate, interest_cycle, quote_refresh_min, invest_cap_pct, dividend_to_cash, stamp_goal',
+          )
           .limit(1),
       )
       return (
@@ -96,6 +110,7 @@ export function createSupabaseDb(): Db {
           quote_refresh_min: 15,
           invest_cap_pct: 70,
           dividend_to_cash: true,
+          stamp_goal: 5,
         }
       )
     },
@@ -179,6 +194,73 @@ export function createSupabaseDb(): Db {
     async setGoalStatus(id, status) {
       const { error } = await sb.from('goal').update({ status }).eq('id', id)
       if (error) throw new Error(error.message)
+    },
+
+    // ---------------------------------------------------------------- 칭찬도장
+
+    async listStamps(childId) {
+      let q = sb.from('stamp').select('*')
+      if (childId) q = q.eq('child_id', childId)
+      return unwrap<Stamp[]>(await q.order('created_at', { ascending: false }))
+    },
+
+    async listRewards(childId) {
+      let q = sb.from('reward').select('*')
+      if (childId) q = q.eq('child_id', childId)
+      return unwrap<Reward[]>(await q.order('created_at', { ascending: false }))
+    },
+
+    async giveStamp(childId, reason) {
+      const { error } = await sb.from('stamp').insert({
+        child_id: childId,
+        reason,
+        status: 'given',
+        asked_by: 'parent',
+        decided_at: new Date().toISOString(),
+      })
+      if (error) throw new Error(error.message)
+    },
+
+    async requestStamp(childId, reason) {
+      // 아이 기기는 이 insert 만 허용된다 (정책 stamp_child_request).
+      // status 나 asked_by 를 바꿔 넣으면 서버가 거부한다.
+      const { error } = await sb.from('stamp').insert({
+        child_id: childId,
+        reason,
+        status: 'requested',
+        asked_by: 'child',
+      })
+      if (error) throw new Error(error.message)
+    },
+
+    async decideStamp(id, approve) {
+      const { error } = await sb
+        .from('stamp')
+        .update({
+          status: approve ? 'given' : 'rejected',
+          decided_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+
+    async deleteStamp(id) {
+      const { error } = await sb.from('stamp').delete().eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+
+    async redeemStamps(childId, title) {
+      // 도장 소진과 보상 기록이 함께 일어나야 한다. DB 함수 한 번으로 처리한다.
+      const { error } = await sb.rpc('redeem_stamps', {
+        p_child_id: childId,
+        p_title: title,
+      })
+      if (error) {
+        if (error.code === 'PGRST202' || /Could not find the function/i.test(error.message)) {
+          throw new Error('칭찬도장 기능이 아직 서버에 올라가지 않았습니다 (마이그레이션 0013)')
+        }
+        throw new Error(error.message)
+      }
     },
 
     async setManualQuote(ticker, name, price) {
