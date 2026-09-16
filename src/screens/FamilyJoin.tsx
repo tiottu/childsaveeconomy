@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, Toggle, colorOf } from '../components/ui'
+import { useBackButton } from '../lib/backButton'
 import { asOfLabel } from '../lib/format'
 import type { ChildOption, ParentLabel } from '../lib/auth'
 import type { OpenSlot } from '../lib/device'
@@ -100,6 +101,21 @@ export function FamilyJoin() {
   function fail(e: unknown) {
     setError(e instanceof Error ? e.message : String(e))
   }
+
+  // 가입은 단계가 여러 개다. 핸드폰 뒤로 버튼이 앱을 닫지 않고 앞 단계로 오게 한다.
+  // 각 화면의 '뒤로' 버튼과 같은 길을 쓴다.
+  useBackButton(step.at !== 'who', () => {
+    setError(null)
+    switch (step.at) {
+      case 'childPick':
+      case 'childNew':
+        return setStep({ at: 'childCode' })
+      default:
+        // 이메일·가족설정·이름표·가족코드 단계에서는 맨 처음으로 돌아간다.
+        // slots 는 이미 계정이 붙은 상태라 되돌릴 게 없어 첫 화면이 맞다.
+        return setStep({ at: 'who' })
+    }
+  })
 
   // ---------------------------------------------------------------- 부모: 이메일 + PIN
 
