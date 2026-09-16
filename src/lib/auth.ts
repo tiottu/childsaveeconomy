@@ -86,6 +86,11 @@ export async function ensureAnonymousSession(): Promise<string> {
 export async function signInParent(
   email: string,
   pin: string,
+  /**
+   * 사용자가 어느 쪽으로 들어왔는지. 오류 문구가 달라진다.
+   * 로그인하러 온 사람에게 "다른 이메일로 등록해 보세요" 라고 하면 엉뚱하다.
+   */
+  intent: 'signup' | 'signin' = 'signup',
 ): Promise<{ isNew: boolean }> {
   const sb = client()
   const addr = email.trim().toLowerCase()
@@ -114,10 +119,14 @@ export async function signInParent(
       // 계정은 있는데 위에서 로그인이 안 됐다. 이유가 둘인데 서버가 구분해 주지 않는다.
       //  - PIN 을 잘못 넣었다
       //  - 그 이메일 계정에 애초에 비밀번호가 없다 (예전 메일 인증 방식으로 만든 계정)
-      // 두 번째를 "PIN 이 틀렸다" 고만 말하면, 맞는 PIN 을 넣어도 계속 틀렸다고 나와서
-      // 사용자가 빠져나올 수가 없다. 실제로 그 일이 있었다.
+      //
+      // 어느 쪽을 먼저 말할지는 사용자가 어디로 들어왔는지에 달렸다.
+      // 로그인하러 온 사람에게는 PIN 이야기가, 새로 등록하러 온 사람에게는
+      // "그 이메일 이미 쓰고 있다" 가 먼저다.
       throw new Error(
-        '이미 등록된 이메일입니다. PIN 이 다르거나, 예전에 메일 인증으로 만든 계정일 수 있습니다. 다른 이메일로 등록해 보세요.',
+        intent === 'signin'
+          ? 'PIN 이 맞지 않습니다. 처음 등록할 때 정한 6자리를 확인해 주세요'
+          : '이미 쓰고 있는 이메일입니다. 그 계정으로 들어가려면 위에서 "이미 등록했어요" 를 골라 주세요.',
       )
     }
     if (/rate limit/i.test(m)) throw new Error(CONFIRM_EMAIL_HINT)
