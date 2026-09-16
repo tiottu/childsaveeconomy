@@ -10,6 +10,7 @@ import { KidHome, KidInvest, KidProfile } from './screens/Kid'
 import { Login, PinGate } from './screens/Login'
 import { ParentHome } from './screens/ParentHome'
 import { Settings } from './screens/Settings'
+import { KidStamps, ParentStamps } from './screens/Stamps'
 import { TradeEntry } from './screens/TradeEntry'
 import { TxnEdit } from './screens/TxnEdit'
 import { useBackButton } from './lib/backButton'
@@ -20,6 +21,7 @@ const PARENT_TABS: Tab[] = [
   { key: 'home', label: '홈', glyph: '◆' },
   { key: 'cash', label: '통장', glyph: '▤' },
   { key: 'invest', label: '투자', glyph: '↗' },
+  { key: 'stamps', label: '도장', glyph: '★' },
   { key: 'goals', label: '목표', glyph: '◎' },
   { key: 'settings', label: '설정', glyph: '⚙' },
 ]
@@ -27,6 +29,7 @@ const PARENT_TABS: Tab[] = [
 const KID_TABS: Tab[] = [
   { key: 'home', label: '내 통장', glyph: '◆' },
   { key: 'invest', label: '내 투자', glyph: '↗' },
+  { key: 'stamps', label: '내 도장', glyph: '★' },
   { key: 'goals', label: '내 목표', glyph: '◎' },
   { key: 'profile', label: '내 정보', glyph: '☺' },
 ]
@@ -40,6 +43,7 @@ type Route =
   | { t: 'invest'; childId: string }
   | { t: 'ticker'; childId: string; ticker: string }
   | { t: 'tradeEntry'; childId?: string; ticker?: string }
+  | { t: 'stamps'; childId: string }
   | { t: 'goals' }
   | { t: 'settings' }
 
@@ -53,6 +57,8 @@ function tabOf(route: Route): string {
     case 'ticker':
     case 'tradeEntry':
       return 'invest'
+    case 'stamps':
+      return 'stamps'
     case 'goals':
       return 'goals'
     case 'settings':
@@ -94,8 +100,8 @@ function ParentApp() {
   const firstChild = children[0]?.id ?? ''
 
   function selectTab(key: string) {
-    // 아이가 없으면 통장·투자 탭은 볼 게 없다. 등록 화면으로 보낸다.
-    if ((key === 'cash' || key === 'invest') && !firstChild) {
+    // 아이가 없으면 통장·투자·도장 탭은 볼 게 없다. 등록 화면으로 보낸다.
+    if ((key === 'cash' || key === 'invest' || key === 'stamps') && !firstChild) {
       return setRoute({ t: 'addChild' })
     }
     switch (key) {
@@ -103,6 +109,8 @@ function ParentApp() {
         return setRoute({ t: 'cash', childId: firstChild })
       case 'invest':
         return setRoute({ t: 'invest', childId: firstChild })
+      case 'stamps':
+        return setRoute({ t: 'stamps', childId: firstChild })
       case 'goals':
         return setRoute({ t: 'goals' })
       case 'settings':
@@ -253,6 +261,16 @@ function ParentApp() {
         </Screen>
       )
 
+    case 'stamps':
+      return (
+        <Screen title="칭찬도장" right={badge} tabs={tabs}>
+          <ParentStamps
+            childId={route.childId}
+            onSelectChild={(childId) => setRoute({ t: 'stamps', childId })}
+          />
+        </Screen>
+      )
+
     case 'goals':
       return (
         <Screen title="저축 목표" right={badge} tabs={tabs}>
@@ -284,6 +302,13 @@ function KidApp({ childId }: { childId: string }) {
     return (
       <Screen title="내 투자" right={badge} tabs={tabs}>
         <KidInvest childId={childId} />
+      </Screen>
+    )
+  }
+  if (tab === 'stamps') {
+    return (
+      <Screen title="내 도장" right={badge} tabs={tabs}>
+        <KidStamps childId={childId} />
       </Screen>
     )
   }
