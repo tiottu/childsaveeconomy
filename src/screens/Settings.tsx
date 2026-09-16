@@ -254,10 +254,6 @@ export function Settings() {
           <span>주식투자 권한</span>
           <span className="label">부모만</span>
         </div>
-        <div className="list-item">
-          <span>배당금 처리</span>
-          <span className="label">{settings.dividend_to_cash ? '현금 입금' : '재투자'}</span>
-        </div>
       </div>
 
       {editing === 'cap' && (
