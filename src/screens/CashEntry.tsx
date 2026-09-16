@@ -3,7 +3,7 @@ import { Field, Toggle } from '../components/ui'
 import { money, todayIso } from '../lib/format'
 import { useData, useStore } from '../state/store'
 
-const IN_CATEGORIES = ['용돈', '보너스', '선물', '이자', '배당금', '기타']
+const IN_CATEGORIES = ['용돈', '보너스', '선물', '이자', '기타']
 const OUT_CATEGORIES = ['간식', '학용품', '장난감', '책', '기부', '기타']
 const QUICK = [1000, 5000, 10000, 50000]
 
