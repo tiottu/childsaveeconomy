@@ -78,14 +78,17 @@ function parentBack(route: Route): Route {
 
 function ParentApp() {
   const { children, assets, positions, cash } = useData()
-  const { membership, deviceRole } = useStore()
+  const { deviceRole } = useStore()
   const [route, setRoute] = useState<Route>({ t: 'home' })
 
   useBackButton(route.t !== 'home', () => setRoute(parentBack(route)))
 
   // 엄마 / 아빠는 권한이 같다. 어느 기기로 보고 있는지만 알려 준다.
-  // 이메일을 가족이 공유하면 membership 에는 이름표가 없다. 기기 등록 쪽이 정답이다.
-  const label = deviceRole?.kind === 'parent' ? deviceRole.label : membership?.label
+  //
+  // 이름표는 **기기 등록만** 믿는다. membership.label 은 계정 단위라 가족이 공유하고,
+  // 마지막에 합류한 사람의 이름표가 남는다. 그걸 가져다 쓰면 엄마 핸드폰이
+  // "아빠 모드" 로 보인다 — 실제로 그렇게 나왔다.
+  const label = deviceRole?.kind === 'parent' ? deviceRole.label : null
   const badgeText = label ? `${label} 모드` : '부모 모드'
 
   const firstChild = children[0]?.id ?? ''
@@ -307,7 +310,7 @@ function KidApp({ childId }: { childId: string }) {
 
 export default function App() {
   const { mode, unlocked, signOut, isDefaultPin, modeIsFixed } = useSession()
-  const { loading, error, data, needsJoin, membership, deviceRole } = useStore()
+  const { loading, error, data, needsJoin, deviceRole } = useStore()
   const { children } = useData()
 
   // 저장된 모드가 가리키는 아이가 사라졌으면 로그인으로 되돌린다.
@@ -345,9 +348,7 @@ export default function App() {
     if (mode.kind === 'parent') {
       return (
         <PinGate
-          who={
-            (deviceRole?.kind === 'parent' ? deviceRole.label : membership?.label) ?? '부모'
-          }
+          who={(deviceRole?.kind === 'parent' ? deviceRole.label : null) ?? '부모'}
           hint="아이가 금액을 고치지 못하게 잠금"
           showDefaultNotice={isDefaultPin(PARENT_KEY)}
         />
