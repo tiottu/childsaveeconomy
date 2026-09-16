@@ -56,7 +56,6 @@ function seed(): Store {
       interest_cycle: 'monthly',
       quote_refresh_min: 15,
       invest_cap_pct: 70,
-      dividend_to_cash: true,
       stamp_goal: 5,
     },
   }
