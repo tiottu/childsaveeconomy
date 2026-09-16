@@ -330,6 +330,25 @@ button.chip::after {
   white-space: nowrap;
 }
 
+/* 등급 트랙. 어디까지 왔고 다음이 무엇인지 한 줄에 담는다. */
+.track {
+  background: var(--surface-0);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.track-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 등급 색. 게임에서 쓰는 순서 그대로 둬야 아이가 바로 알아본다. */
+.chip.tier-1 { background: #f1efe8; color: #5f5e5a; }
+.chip.tier-2 { background: #e6f1fb; color: #185fa5; }
+.chip.tier-3 { background: #faeeda; color: #854f0b; }
+.chip.tier-4 { background: #e1f5ee; color: #0f6e56; }
+.chip.tier-5 { background: #eeedfe; color: #534ab7; }
+
 .badge-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
