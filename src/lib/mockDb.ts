@@ -8,7 +8,9 @@ import type {
   NewCashTxn,
   NewTrade,
   Quote,
+  Reward,
   Settings,
+  Stamp,
   Trade,
 } from './types'
 
@@ -26,6 +28,8 @@ type Store = {
   holdings: Holding[]
   quotes: Quote[]
   goals: Goal[]
+  stamps: Stamp[]
+  rewards: Reward[]
   settings: Settings
 }
 
@@ -45,12 +49,15 @@ function seed(): Store {
     holdings: [],
     quotes: [],
     goals: [],
+    stamps: [],
+    rewards: [],
     settings: {
       interest_rate: 5,
       interest_cycle: 'monthly',
       quote_refresh_min: 15,
       invest_cap_pct: 70,
       dividend_to_cash: true,
+      stamp_goal: 5,
     },
   }
 }
@@ -58,7 +65,9 @@ function seed(): Store {
 function load(): Store {
   try {
     const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as Store) : seed()
+    if (!raw) return seed()
+    // 예전에 저장된 데이터에는 나중에 생긴 칸이 없다. 빈 값으로 채워 넣는다.
+    return { ...seed(), ...(JSON.parse(raw) as Store) }
   } catch {
     return seed()
   }
@@ -339,6 +348,88 @@ export function createMockDb(): Db {
         g.status = status
         commit()
       }
+    },
+
+    // ---------------------------------------------------------------- 칭찬도장
+
+    async listStamps(childId) {
+      sync()
+      return store.stamps
+        .filter((s) => !childId || s.child_id === childId)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    },
+
+    async listRewards(childId) {
+      sync()
+      return store.rewards
+        .filter((r) => !childId || r.child_id === childId)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    },
+
+    async giveStamp(childId, reason) {
+      sync()
+      store.stamps.push({
+        id: id(),
+        child_id: childId,
+        reason,
+        status: 'given',
+        asked_by: 'parent',
+        created_at: new Date().toISOString(),
+        decided_at: new Date().toISOString(),
+      })
+      commit()
+    },
+
+    async requestStamp(childId, reason) {
+      sync()
+      store.stamps.push({
+        id: id(),
+        child_id: childId,
+        reason,
+        status: 'requested',
+        asked_by: 'child',
+        created_at: new Date().toISOString(),
+        decided_at: null,
+      })
+      commit()
+    },
+
+    async decideStamp(stampId, approve) {
+      sync()
+      const s = store.stamps.find((x) => x.id === stampId)
+      if (!s) throw new Error('그런 도장 신청이 없습니다')
+      s.status = approve ? 'given' : 'rejected'
+      s.decided_at = new Date().toISOString()
+      commit()
+    },
+
+    async deleteStamp(stampId) {
+      sync()
+      store.stamps = store.stamps.filter((s) => s.id !== stampId)
+      commit()
+    },
+
+    async redeemStamps(childId, title) {
+      sync()
+      const goal = store.settings.stamp_goal
+      // 오래된 도장부터 쓴다
+      const usable = store.stamps
+        .filter((s) => s.child_id === childId && s.status === 'given')
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
+        .slice(0, goal)
+
+      if (usable.length < goal) {
+        throw new Error(`도장이 ${goal}개 모여야 보상을 줄 수 있습니다`)
+      }
+      for (const s of usable) s.status = 'used'
+      store.rewards.push({
+        id: id(),
+        child_id: childId,
+        title: title.trim() || '보상',
+        stamps: goal,
+        created_at: new Date().toISOString(),
+      })
+      commit()
     },
 
     async setManualQuote(ticker, name, price) {
