@@ -70,7 +70,6 @@ export type Settings = {
   interest_cycle: 'monthly' | 'quarterly' | 'yearly'
   quote_refresh_min: number
   invest_cap_pct: number
-  dividend_to_cash: boolean
   /** 보상 하나에 필요한 칭찬도장 수 */
   stamp_goal: number
 }
