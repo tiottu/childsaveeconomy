@@ -1,5 +1,6 @@
 import { cashWeight, pnlPct } from '../lib/compute'
 import { asOfLabel, money, pct, signed } from '../lib/format'
+import { EmblemTile, emblemOf } from '../components/Emblem'
 import { Avatar, MixBar } from '../components/ui'
 import { useData } from '../state/store'
 
@@ -71,7 +72,8 @@ export function ParentHome({
           <button key={a.child_id} className="card tap" onClick={() => onOpenChild(a.child_id)}>
             <div className="row">
               <div className="row" style={{ gap: 10, justifyContent: 'flex-start' }}>
-                <Avatar name={a.name} index={i} />
+                {/* 아이가 고른 엠블럼을 부모 목록에도 보여준다. 누구 것인지 한눈에 든다. */}
+                {child ? <EmblemTile k={emblemOf(child)} size={34} /> : <Avatar name={a.name} index={i} />}
                 <div>
                   <div>{a.name}</div>
                   {child && (
