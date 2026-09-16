@@ -134,6 +134,7 @@ function ParentApp() {
             onCashEntry={() => setRoute({ t: 'cashEntry' })}
             onTradeEntry={() => setRoute({ t: 'tradeEntry' })}
             onAddChild={() => setRoute({ t: 'addChild' })}
+            onOpenRequests={(childId) => setRoute({ t: 'invest', childId })}
           />
         </Screen>
       )

@@ -14,6 +14,7 @@ import type {
   Settings,
   Stamp,
   Trade,
+  TradeRequest,
 } from './types'
 
 /** 실시간 구독 대상. 하나라도 바뀌면 화면을 다시 읽는다. */
@@ -27,11 +28,24 @@ const WATCHED = [
   // 부모가 도장을 찍으면 아이 핸드폰이 새로고침 없이 바뀐다. 그 반대도 마찬가지다.
   'stamp',
   'reward',
+  // 아이가 매매를 신청하면 부모 화면에 바로 뜬다. 승인하면 아이 화면도 바로 바뀐다.
+  'trade_request',
 ] as const
 
 function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message)
   return (res.data ?? []) as T
+}
+
+const MIGRATION_HINT = '매매 신청 기능이 아직 서버에 올라가지 않았습니다 (마이그레이션 0014)'
+
+/** 아직 만들지 않은 표를 읽었을 때. 42P01 은 postgres, PGRST205 는 스키마 캐시. */
+function missingTable(error: { code?: string; message: string }): boolean {
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    /does not exist|Could not find the table/i.test(error.message)
+  )
 }
 
 export function createSupabaseDb(): Db {
@@ -199,6 +213,55 @@ export function createSupabaseDb(): Db {
         p_fx: t.fx,
         p_occurred_on: t.occurred_on,
       })
+      if (error) throw new Error(error.message)
+    },
+
+    // ---------------------------------------------------------------- 매매 신청
+
+    async listTradeRequests(childId) {
+      let q = sb.from('trade_request').select('*')
+      if (childId) q = q.eq('child_id', childId)
+      const res = await q.order('created_at', { ascending: false })
+      if (res.error) {
+        // 마이그레이션 0014 를 아직 안 돌렸으면 표가 없다. 그 하나 때문에 앱 전체가
+        // 안 열리면 안 된다 — 신청 기능만 비어 보이게 두고 넘어간다.
+        if (missingTable(res.error)) return []
+        throw new Error(res.error.message)
+      }
+      return (res.data ?? []) as TradeRequest[]
+    },
+
+    async requestTrade(req) {
+      // 아이 기기는 이 insert 만 허용된다 (정책 trade_request_child).
+      // status 를 'approved' 로 바꿔 넣으면 서버가 거부한다.
+      const { error } = await sb.from('trade_request').insert({ ...req, status: 'requested' })
+      if (error) {
+        if (missingTable(error)) throw new Error(MIGRATION_HINT)
+        throw new Error(error.message)
+      }
+    },
+
+    async decideTradeRequest(id, approve, price) {
+      // 승인은 '상태 바꾸기 + 실제 매매' 가 함께 일어나야 한다. 나눠 부르면
+      // 매매만 되고 신청이 남거나(두 번 승인) 그 반대가 된다. DB 함수 한 번으로 묶는다.
+      const { error } = await sb.rpc('decide_trade_request', {
+        p_id: id,
+        p_approve: approve,
+        p_price: price ?? null,
+      })
+      if (error) {
+        if (error.code === 'PGRST202' || /Could not find the function/i.test(error.message)) {
+          throw new Error(MIGRATION_HINT)
+        }
+        throw new Error(error.message)
+      }
+    },
+
+    async cancelTradeRequest(id) {
+      const { error } = await sb
+        .from('trade_request')
+        .update({ status: 'canceled', decided_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw new Error(error.message)
     },
 

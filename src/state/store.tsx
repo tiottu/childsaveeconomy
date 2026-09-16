@@ -21,6 +21,7 @@ import type {
   Settings,
   Stamp,
   Trade,
+  TradeRequest,
 } from '../lib/types'
 
 type Data = {
@@ -34,6 +35,8 @@ type Data = {
   /** 칭찬도장. 신청·받음·쓴 것이 다 들어 있고 화면에서 상태로 걸러 쓴다. */
   stamps: Stamp[]
   rewards: Reward[]
+  /** 아이가 올린 매매 신청. 부모가 승인해야 실제 거래가 된다. */
+  tradeRequests: TradeRequest[]
   quotes: Quote[]
   settings: Settings
 }
@@ -67,6 +70,7 @@ const empty: Data = {
   goals: [],
   stamps: [],
   rewards: [],
+  tradeRequests: [],
   quotes: [],
   settings: {
     interest_rate: 5,
@@ -101,15 +105,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async (instance: Db) => {
     try {
-      const [kids, assets, goals, quotes, settings, stamps, rewards] = await Promise.all([
-        instance.listChildren(),
-        instance.listAssets(),
-        instance.listGoals(),
-        instance.listQuotes(),
-        instance.getSettings(),
-        instance.listStamps(),
-        instance.listRewards(),
-      ])
+      const [kids, assets, goals, quotes, settings, stamps, rewards, tradeRequests] =
+        await Promise.all([
+          instance.listChildren(),
+          instance.listAssets(),
+          instance.listGoals(),
+          instance.listQuotes(),
+          instance.getSettings(),
+          instance.listStamps(),
+          instance.listRewards(),
+          instance.listTradeRequests(),
+        ])
 
       const cash: Record<string, CashTxn[]> = {}
       const positions: Record<string, Position[]> = {}
@@ -136,6 +142,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         goals,
         stamps,
         rewards,
+        tradeRequests,
         quotes,
         settings,
       })

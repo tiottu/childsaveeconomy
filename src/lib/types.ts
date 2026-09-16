@@ -39,6 +39,44 @@ export type Trade = {
   occurred_on: string
 }
 
+/**
+ * 아이가 올린 매매 신청.
+ *
+ * 아이는 사고 싶다/팔고 싶다까지만 할 수 있다. **부모가 승인해야 실제 거래가 된다.**
+ * 승인되면 trade 한 줄과 현금 기록이 만들어지고 trade_id 가 채워진다.
+ *
+ * price 는 아이가 신청할 때 화면에 보였던 값이다. 승인 시점의 시세와 다를 수 있어
+ * 부모가 고쳐서 승인할 수 있다.
+ */
+export type TradeRequest = {
+  id: string
+  child_id: string
+  direction: 'buy' | 'sell'
+  ticker: string
+  name: string
+  quantity: number
+  price: number
+  /** 원화 환산 환율. 국내 종목은 1 */
+  fx: number
+  /** 아이가 적은 이유 */
+  reason: string | null
+  status: 'requested' | 'approved' | 'rejected' | 'canceled'
+  trade_id: string | null
+  created_at: string
+  decided_at: string | null
+}
+
+export type NewTradeRequest = {
+  child_id: string
+  direction: 'buy' | 'sell'
+  ticker: string
+  name: string
+  quantity: number
+  price: number
+  fx: number
+  reason: string | null
+}
+
 export type Holding = {
   child_id: string
   ticker: string

@@ -9,8 +9,10 @@ import type {
   Quote,
   Reward,
   Settings,
+  NewTradeRequest,
   Stamp,
   Trade,
+  TradeRequest,
 } from './types'
 
 /**
@@ -64,6 +66,24 @@ export type Db = {
   applyTrade(trade: NewTrade): Promise<void>
   /** 매매 삭제. 연결된 현금 거래도 사라지고 보유 수량·평균단가를 다시 계산한다. */
   deleteTrade(id: string): Promise<void>
+  // ---------------------------------------------------------------- 매매 신청
+  /**
+   * 아이가 올린 매매 신청.
+   *
+   * 아직 서버에 표가 없으면(마이그레이션 0014 전) 빈 배열을 준다 — 이 기능 하나 때문에
+   * 앱 전체가 안 열리면 안 된다.
+   */
+  listTradeRequests(childId?: string): Promise<TradeRequest[]>
+  /** 아이가 "사고 싶어요 / 팔고 싶어요" 를 올린다. 실제 거래는 아직 일어나지 않는다. */
+  requestTrade(req: NewTradeRequest): Promise<void>
+  /**
+   * 부모가 승인하거나 돌려보낸다. 승인하면 그 자리에서 실제 매매가 된다.
+   * price 를 주면 그 값으로 거래한다 (신청할 때와 시세가 달라졌을 때).
+   */
+  decideTradeRequest(id: string, approve: boolean, price?: number): Promise<void>
+  /** 아이가 스스로 신청을 접는다 */
+  cancelTradeRequest(id: string): Promise<void>
+
   addGoal(goal: { child_id: string; title: string; target_amount: number; basis: 'cash' | 'total'; status: Goal['status'] }): Promise<void>
   setGoalStatus(id: string, status: Goal['status']): Promise<void>
 

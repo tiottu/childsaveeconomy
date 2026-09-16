@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ParentTradeRequests } from './TradeRequests'
 import { ProgressBar, TickerBadge, Toggle, colorOf } from '../components/ui'
 import { asOfLabel, dayLabel, money, pct, qty, signed, signedUnit, unitPrice } from '../lib/format'
 import { useData, useStore } from '../state/store'
@@ -58,6 +59,9 @@ export function InvestList({
           총자산 대비 투자 비중 {Math.round((asset.invest / asset.total) * 100)}%
         </div>
       )}
+
+      {/* 아이가 올린 신청이 있으면 보유 목록보다 먼저 보여준다. 기다리는 일이니까. */}
+      <ParentTradeRequests childId={childId} />
 
       <div className="section-title">보유 종목 {rows.length}</div>
 

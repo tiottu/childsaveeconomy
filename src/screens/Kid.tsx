@@ -25,6 +25,7 @@ import {
   weekdayName,
 } from '../lib/format'
 import { useState } from 'react'
+import { KidTradeRequest } from './TradeRequests'
 import { useSession } from '../state/session'
 import { useData, useStore } from '../state/store'
 
@@ -284,7 +285,8 @@ export function KidInvest({ childId }: { childId: string }) {
     return (
       <>
         <div className="empty">아직 가진 주식이 없어요</div>
-        <div className="notice">주식은 부모님과 함께 정해요</div>
+        {/* 가진 게 없어도 사고 싶다는 신청은 할 수 있어야 한다 */}
+        <KidTradeRequest childId={childId} />
       </>
     )
   }
@@ -393,12 +395,7 @@ export function KidInvest({ childId }: { childId: string }) {
         )
       })}
 
-      <div className="spacer" />
-      <div className="notice">
-        주식은 값이 오르고 내려요.
-        <br />
-        사고 파는 건 부모님과 함께 정해요
-      </div>
+      <KidTradeRequest childId={childId} />
     </>
   )
 }

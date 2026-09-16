@@ -457,6 +457,39 @@ button.chip::after {
   font-weight: 500;
 }
 
+/* 아이가 종목을 고르는 칸. 직접 적게 하면 이름이 종목 코드로 들어간다. */
+.pick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 12px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.pick.on {
+  border-color: var(--accent-fill);
+  background: var(--accent-bg);
+}
+
+.pick-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .emblem-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));

@@ -12,6 +12,7 @@ import type {
   Settings,
   Stamp,
   Trade,
+  TradeRequest,
 } from './types'
 
 /**
@@ -30,6 +31,8 @@ type Store = {
   goals: Goal[]
   stamps: Stamp[]
   rewards: Reward[]
+  /** 아이가 올린 매매 신청. 부모가 승인하면 trades 로 넘어간다. */
+  tradeRequests: TradeRequest[]
   settings: Settings
 }
 
@@ -51,6 +54,7 @@ function seed(): Store {
     goals: [],
     stamps: [],
     rewards: [],
+    tradeRequests: [],
     settings: {
       interest_rate: 5,
       interest_cycle: 'monthly',
@@ -109,6 +113,91 @@ export function createMockDb(): Db {
       store.holdings.filter((h) => h.child_id === childId),
       store.quotes,
     )
+  }
+
+  /**
+   * 매매 한 건을 장부에 반영한다 — 매매 기록 + 현금 기록 + 보유 수량·평균단가.
+   *
+   * 부모가 직접 기록할 때(applyTrade)와 아이 신청을 승인할 때(decideTradeRequest)
+   * 똑같이 써야 하므로 따로 뺐다. 두 곳에 같은 계산을 두면 언젠가 어긋난다.
+   */
+  async function applyTradeInternal(t: NewTrade): Promise<string> {
+    sync()
+    // 현금 통장에서 빠지는 금액은 언제나 원화다. 미국 종목이면 환율로 환산한다.
+    const amount =
+      Math.round(t.quantity * t.price * t.fx) + (t.direction === 'buy' ? t.fee : -t.fee)
+    const existing = store.holdings.find((h) => h.child_id === t.child_id && h.ticker === t.ticker)
+
+    if (t.direction === 'buy') {
+      const balance = childCash(t.child_id).reduce(
+        (s, x) => s + (x.direction === 'in' ? x.amount : -x.amount),
+        0,
+      )
+      if (balance < amount) {
+        throw new Error(
+          `현금이 부족합니다. 잔액 ${balance.toLocaleString('ko-KR')}원, 필요 ${amount.toLocaleString('ko-KR')}원`,
+        )
+      }
+    } else {
+      if (!existing || existing.quantity < t.quantity) {
+        throw new Error(`보유 수량이 부족합니다. 보유 ${existing?.quantity ?? 0}주`)
+      }
+    }
+
+    const tradeId = id()
+    // fx 는 현금 환산에만 쓰고 거래 기록에는 남기지 않는다 (단가는 종목 통화 기준)
+    const { fx: _fx, ...tradeRow } = t
+    store.trades.push({ id: tradeId, ...tradeRow })
+    store.cash.push({
+      id: id(),
+      child_id: t.child_id,
+      direction: t.direction === 'buy' ? 'out' : 'in',
+      amount: Math.abs(amount),
+      category: '투자',
+      memo: `${t.name} ${t.quantity}주 ${t.direction === 'buy' ? '매수' : '매도'}`,
+      occurred_on: t.occurred_on,
+      trade_id: tradeId,
+    })
+
+    if (t.direction === 'buy') {
+      if (existing) {
+        const total = existing.quantity + t.quantity
+        existing.avg_price =
+          (existing.quantity * existing.avg_price + t.quantity * t.price) / total
+        existing.quantity = total
+        existing.name = t.name
+      } else {
+        store.holdings.push({
+          child_id: t.child_id,
+          ticker: t.ticker,
+          name: t.name,
+          quantity: t.quantity,
+          avg_price: t.price,
+        })
+      }
+      // 새로 산 종목의 시세가 없으면 매수가를 임시 시세로 넣어둔다
+      if (!store.quotes.some((q) => q.ticker === t.ticker)) {
+        store.quotes.push({
+          ticker: t.ticker,
+          name: t.name,
+          price: t.price,
+          prev_close: t.price,
+          change_pct: 0,
+          currency: 'KRW',
+          as_of: new Date().toISOString(),
+          source: 'manual',
+        })
+      }
+    } else if (existing) {
+      // 매도는 평균단가를 바꾸지 않는다
+      existing.quantity -= t.quantity
+      if (existing.quantity <= 0) {
+        store.holdings = store.holdings.filter((h) => h !== existing)
+      }
+    }
+
+    commit()
+    return tradeId
   }
 
   return {
@@ -266,82 +355,77 @@ export function createMockDb(): Db {
     },
 
     async applyTrade(t: NewTrade) {
-      sync()
-      // 현금 통장에서 빠지는 금액은 언제나 원화다. 미국 종목이면 환율로 환산한다.
-      const amount =
-        Math.round(t.quantity * t.price * t.fx) + (t.direction === 'buy' ? t.fee : -t.fee)
-      const existing = store.holdings.find(
-        (h) => h.child_id === t.child_id && h.ticker === t.ticker,
-      )
+      await applyTradeInternal(t)
+    },
 
-      if (t.direction === 'buy') {
-        const balance = childCash(t.child_id).reduce(
-          (s, x) => s + (x.direction === 'in' ? x.amount : -x.amount),
-          0,
-        )
-        if (balance < amount) {
-          throw new Error(
-            `현금이 부족합니다. 잔액 ${balance.toLocaleString('ko-KR')}원, 필요 ${amount.toLocaleString('ko-KR')}원`,
-          )
-        }
-      } else {
-        if (!existing || existing.quantity < t.quantity) {
-          throw new Error(`보유 수량이 부족합니다. 보유 ${existing?.quantity ?? 0}주`)
-        }
+    // ---------------------------------------------------------------- 매매 신청
+
+    async listTradeRequests(childId) {
+      sync()
+      return store.tradeRequests
+        .filter((r) => !childId || r.child_id === childId)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    },
+
+    async requestTrade(req) {
+      sync()
+      store.tradeRequests.push({
+        id: id(),
+        ...req,
+        status: 'requested',
+        trade_id: null,
+        created_at: new Date().toISOString(),
+        decided_at: null,
+      })
+      commit()
+    },
+
+    async decideTradeRequest(reqId, approve, price) {
+      sync()
+      const r = store.tradeRequests.find((x) => x.id === reqId)
+      if (!r) throw new Error('그 신청을 찾을 수 없습니다')
+      if (r.status !== 'requested') throw new Error('이미 처리된 신청입니다')
+
+      if (!approve) {
+        r.status = 'rejected'
+        r.decided_at = new Date().toISOString()
+        commit()
+        return
       }
 
-      const tradeId = id()
-      // fx 는 현금 환산에만 쓰고 거래 기록에는 남기지 않는다 (단가는 종목 통화 기준)
-      const { fx: _fx, ...tradeRow } = t
-      store.trades.push({ id: tradeId, ...tradeRow })
-      store.cash.push({
-        id: id(),
-        child_id: t.child_id,
-        direction: t.direction === 'buy' ? 'out' : 'in',
-        amount: Math.abs(amount),
-        category: '투자',
-        memo: `${t.name} ${t.quantity}주 ${t.direction === 'buy' ? '매수' : '매도'}`,
-        occurred_on: t.occurred_on,
-        trade_id: tradeId,
+      // 승인하면 그 자리에서 실제 매매가 된다. 현금이 부족하면 여기서 막히고
+      // 신청은 '기다림' 으로 그대로 남는다.
+      const used = price ?? r.price
+      const tradeId = await applyTradeInternal({
+        child_id: r.child_id,
+        direction: r.direction,
+        ticker: r.ticker,
+        name: r.name,
+        quantity: r.quantity,
+        price: used,
+        fee: 0,
+        fx: r.fx,
+        occurred_on: new Date().toISOString().slice(0, 10),
       })
 
-      if (t.direction === 'buy') {
-        if (existing) {
-          const total = existing.quantity + t.quantity
-          existing.avg_price =
-            (existing.quantity * existing.avg_price + t.quantity * t.price) / total
-          existing.quantity = total
-          existing.name = t.name
-        } else {
-          store.holdings.push({
-            child_id: t.child_id,
-            ticker: t.ticker,
-            name: t.name,
-            quantity: t.quantity,
-            avg_price: t.price,
-          })
-        }
-        // 새로 산 종목의 시세가 없으면 매수가를 임시 시세로 넣어둔다
-        if (!store.quotes.some((q) => q.ticker === t.ticker)) {
-          store.quotes.push({
-            ticker: t.ticker,
-            name: t.name,
-            price: t.price,
-            prev_close: t.price,
-            change_pct: 0,
-            currency: 'KRW',
-            as_of: new Date().toISOString(),
-            source: 'manual',
-          })
-        }
-      } else if (existing) {
-        // 매도는 평균단가를 바꾸지 않는다
-        existing.quantity -= t.quantity
-        if (existing.quantity <= 0) {
-          store.holdings = store.holdings.filter((h) => h !== existing)
-        }
+      sync()
+      const fresh = store.tradeRequests.find((x) => x.id === reqId)
+      if (fresh) {
+        fresh.status = 'approved'
+        fresh.price = used
+        fresh.trade_id = tradeId
+        fresh.decided_at = new Date().toISOString()
       }
+      commit()
+    },
 
+    async cancelTradeRequest(reqId) {
+      sync()
+      const r = store.tradeRequests.find((x) => x.id === reqId)
+      if (!r) return
+      if (r.status !== 'requested') throw new Error('이미 처리된 신청입니다')
+      r.status = 'canceled'
+      r.decided_at = new Date().toISOString()
       commit()
     },
 

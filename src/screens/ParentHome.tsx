@@ -9,13 +9,23 @@ export function ParentHome({
   onCashEntry,
   onTradeEntry,
   onAddChild,
+  onOpenRequests,
 }: {
   onOpenChild: (childId: string) => void
   onCashEntry: () => void
   onTradeEntry: () => void
   onAddChild: () => void
+  /** 아이가 올린 매매 신청을 보러 간다 */
+  onOpenRequests: (childId: string) => void
 }) {
-  const { children, assets, quotes } = useData()
+  const { children, assets, quotes, tradeRequests, stamps } = useData()
+
+  /*
+    기다리는 신청은 첫 화면에서 알려 준다. 투자 탭을 열어야만 보인다면 아이는
+    보내 놓고 며칠을 기다리게 된다 — 승인이 필요한 기능은 눈에 띄어야 한다.
+  */
+  const pendingTrades = tradeRequests.filter((r) => r.status === 'requested')
+  const pendingStamps = stamps.filter((s) => s.status === 'requested')
 
   const totalCash = assets.reduce((s, a) => s + a.cash, 0)
   const totalInvest = assets.reduce((s, a) => s + a.invest, 0)
@@ -54,6 +64,34 @@ export function ParentHome({
           </span>
         </div>
       </div>
+
+      {pendingTrades.length > 0 && (
+        <button
+          className="card tap"
+          style={{ background: 'var(--warning-bg)', borderColor: 'var(--warning-border)' }}
+          onClick={() => onOpenRequests(pendingTrades[0].child_id)}
+        >
+          <div className="row" style={{ color: 'var(--warning-text)' }}>
+            <span style={{ fontWeight: 500 }}>
+              매매 신청 {pendingTrades.length}건이 기다립니다
+            </span>
+            <span className="label">보기 ›</span>
+          </div>
+          <div className="label" style={{ color: 'var(--warning-text)', marginTop: 3 }}>
+            {pendingTrades
+              .slice(0, 3)
+              .map((r) => {
+                const who = children.find((c) => c.id === r.child_id)?.name ?? '아이'
+                return `${who} · ${r.name} ${r.quantity}주 ${r.direction === 'buy' ? '매수' : '매도'}`
+              })
+              .join(' / ')}
+          </div>
+        </button>
+      )}
+
+      {pendingStamps.length > 0 && (
+        <div className="label muted">칭찬도장 신청도 {pendingStamps.length}건 기다립니다</div>
+      )}
 
       <div className="section-title">자녀</div>
 
