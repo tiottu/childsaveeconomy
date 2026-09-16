@@ -273,6 +273,127 @@ button.chip::after {
   color: var(--warning-text);
 }
 
+/* ------------------------------------------------------------ 아이 화면
+   4학년 눈높이. 캐릭터 대신 게임 프로필 — 레벨·경험치·업적.
+   부모 화면은 금액을 다루니 손대지 않는다. */
+
+.profile {
+  background: var(--accent-bg);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-name {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+
+.profile .label {
+  color: var(--accent-text);
+}
+
+.profile-xp {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 통계 칩 2×2. 좁은 화면에서도 두 칸은 들어간다. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat {
+  background: var(--surface-0);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 500;
+  margin-top: 2px;
+  /* 금액이 길어도 칸을 밀어내지 않게 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+}
+
+.badge {
+  background: var(--accent-bg);
+  border-radius: var(--radius);
+  padding: 9px 5px;
+  text-align: center;
+  color: var(--accent-text);
+}
+
+.badge.locked {
+  background: var(--surface-0);
+  color: var(--text-muted);
+}
+
+.badge-mark {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.badge-label {
+  font-size: 11px;
+  margin-top: 2px;
+  /* 이름이 길어도 칸 높이를 흐트러뜨리지 않게 한 줄로 둔다 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 도장판을 미션처럼. 진행 막대를 먼저 보여주고 칸은 그 아래 둔다. */
+.quest {
+  background: var(--accent-bg);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.quest .row,
+.quest .label {
+  color: var(--accent-text);
+}
+
+.quest-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+
+.quest-count {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+
+.emblem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 10px;
+}
+
 .avatar {
   width: 34px;
   height: 34px;
