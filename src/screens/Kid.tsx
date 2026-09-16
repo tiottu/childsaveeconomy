@@ -3,7 +3,15 @@ import { EMBLEMS, EmblemTile, emblemOf, type EmblemKey } from '../components/Emb
 import { ProgressBar, TickerBadge, colorOf } from '../components/ui'
 import { monthlyChange } from '../lib/compute'
 import { monthlyHistory } from '../lib/history'
-import { badgesOf, levelOf, savingStreak, type Level } from '../lib/profile'
+import {
+  badgesOf,
+  levelOf,
+  overallTier,
+  savingStreak,
+  tracksOf,
+  type Level,
+  type Track,
+} from '../lib/profile'
 import type { Child } from '../lib/types'
 import {
   ageFrom,
@@ -26,6 +34,24 @@ const EXPLAIN: Record<string, string> = {
   '360750.KS': '미국의 큰 회사 500곳 묶음',
   '379800.KS': '미국의 큰 회사 500곳 묶음',
   '069500.KS': '한국의 큰 회사 200곳 묶음',
+}
+
+/** 트랙 값을 단위에 맞게 읽는다 */
+function trackAmount(t: Track, n: number): string {
+  switch (t.unit) {
+    case 'won':
+      return n >= 10000 ? `${Math.round(n / 10000)}만원` : money(n)
+    case 'week':
+      return `${n}주`
+    case 'month':
+      return `${n}개월`
+    default:
+      return `${n}회`
+  }
+}
+
+function trackValue(t: Track): string {
+  return trackAmount(t, t.value)
 }
 
 /** 이름·레벨·칭호·경험치. 아이 화면 맨 위에 항상 같은 모양으로 둔다. */
@@ -69,6 +95,8 @@ export function KidHome({ childId }: { childId: string }) {
   const myStamps = stamps.filter((s) => s.child_id === childId)
   const lv = levelOf(myStamps)
   const streak = savingStreak(txns)
+  const tracks = tracksOf({ cash: txns, trades: myTrades, stamps: myStamps })
+  const rank = overallTier(tracks)
   const badges = badgesOf({
     asset,
     cash: txns,
@@ -76,7 +104,6 @@ export function KidHome({ childId }: { childId: string }) {
     stamps: myStamps,
     rewards: rewards.filter((r) => r.child_id === childId),
     goals: goals.filter((g) => g.child_id === childId),
-    streak,
   })
   const earned = badges.filter((b) => b.earned).length
 
@@ -111,15 +138,34 @@ export function KidHome({ childId }: { childId: string }) {
         <div className="mid">{days}일</div>
       </div>
 
+      {/*
+        등급 트랙. 처음엔 업적을 한 번 받으면 끝나는 별로 만들었는데, 3년치 기록을
+        넣자마자 거의 다 열려서 다음 할 일이 안 남았다. 다섯 단계로 나눠 두면
+        어디까지 왔고 다음이 무엇인지 늘 보인다.
+      */}
+      <div className="section-title">내 등급 · {rank.name}</div>
+      {tracks.map((t) => (
+        <div key={t.key} className="track">
+          <div className="row">
+            <span className="track-label">{t.label}</span>
+            <span className={t.tier > 0 ? `chip tier-${t.tier}` : 'chip gray'}>
+              {t.tier > 0 ? t.tierName : '아직'}
+            </span>
+          </div>
+          <div style={{ margin: '6px 0 4px' }}>
+            <ProgressBar pct={t.pct} color="var(--accent-fill)" />
+          </div>
+          <div className="row label muted">
+            <span>{trackValue(t)}</span>
+            <span>{t.next === null ? '최고 등급' : `다음 ${trackAmount(t, t.next)}`}</span>
+          </div>
+        </div>
+      ))}
+
       <div className="section-title">
         업적 {earned} / {badges.length}
       </div>
       <div className="badge-grid">
-        {/*
-          잠긴 업적에는 설명을 붙이지 않는다. 좁은 화면에서 두세 줄로 접히면서 칸 높이가
-          들쭉날쭉해지고, 무엇보다 이름만으로 이미 무엇을 해야 하는지 알 수 있다
-          ("50만 돌파", "4주 연속"). 채운 별과 빈 별로 상태를 구분한다.
-        */}
         {badges.map((b) => (
           <div key={b.key} className={b.earned ? 'badge' : 'badge locked'}>
             <div className="badge-mark">{b.earned ? '★' : '☆'}</div>
