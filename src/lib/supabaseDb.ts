@@ -99,7 +99,7 @@ export function createSupabaseDb(): Db {
         await sb
           .from('settings')
           .select(
-            'interest_rate, interest_cycle, quote_refresh_min, invest_cap_pct, dividend_to_cash, stamp_goal',
+            'interest_rate, interest_cycle, quote_refresh_min, invest_cap_pct, stamp_goal',
           )
           .limit(1),
       )
@@ -109,7 +109,6 @@ export function createSupabaseDb(): Db {
           interest_cycle: 'monthly',
           quote_refresh_min: 15,
           invest_cap_pct: 70,
-          dividend_to_cash: true,
           stamp_goal: 5,
         }
       )
