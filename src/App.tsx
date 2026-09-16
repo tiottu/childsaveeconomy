@@ -12,6 +12,7 @@ import { ParentHome } from './screens/ParentHome'
 import { Settings } from './screens/Settings'
 import { TradeEntry } from './screens/TradeEntry'
 import { TxnEdit } from './screens/TxnEdit'
+import { useBackButton } from './lib/backButton'
 import { PARENT_KEY, useSession } from './state/session'
 import { useData, useStore } from './state/store'
 
@@ -61,10 +62,26 @@ function tabOf(route: Route): string {
   }
 }
 
+/** 이 화면에서 뒤로 가면 어디로 가나. 핸드폰 뒤로 버튼과 ‹ 버튼이 같은 길을 쓴다. */
+function parentBack(route: Route): Route {
+  switch (route.t) {
+    case 'txnEdit':
+      return { t: 'cash', childId: route.childId }
+    case 'ticker':
+      return { t: 'invest', childId: route.childId }
+    case 'tradeEntry':
+      return route.childId ? { t: 'invest', childId: route.childId } : { t: 'home' }
+    default:
+      return { t: 'home' }
+  }
+}
+
 function ParentApp() {
   const { children, assets, positions, cash } = useData()
   const { membership, deviceRole } = useStore()
   const [route, setRoute] = useState<Route>({ t: 'home' })
+
+  useBackButton(route.t !== 'home', () => setRoute(parentBack(route)))
 
   // 엄마 / 아빠는 권한이 같다. 어느 기기로 보고 있는지만 알려 준다.
   // 이메일을 가족이 공유하면 membership 에는 이름표가 없다. 기기 등록 쪽이 정답이다.
@@ -252,6 +269,8 @@ function ParentApp() {
 function KidApp({ childId }: { childId: string }) {
   const { children } = useData()
   const [tab, setTab] = useState('home')
+
+  useBackButton(tab !== 'home', () => setTab('home'))
   const child = children.find((c) => c.id === childId)
   const name = child?.name ?? '내'
 
