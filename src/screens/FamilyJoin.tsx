@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, Toggle, colorOf } from '../components/ui'
+import { asOfLabel } from '../lib/format'
 import type { ChildOption, ParentLabel } from '../lib/auth'
 import type { OpenSlot } from '../lib/device'
 import { useSession } from '../state/session'
@@ -154,7 +155,7 @@ export function FamilyJoin() {
     setBusy(true)
     try {
       const { signInParent, getMembership } = await auth()
-      await signInParent(addr, code)
+      await signInParent(addr, code, parentMode)
 
       // 이미 가족이 있으면 (배우자가 먼저 만들어 둔 경우) 이 기기가 누구인지만 고른다
       const existing = await getMembership()
@@ -208,6 +209,14 @@ export function FamilyJoin() {
       const { openSlots } = await import('../lib/device')
       const slots = await openSlots()
       setStep({ at: 'slots', slots })
+
+      // 부모 이름표가 둘 다 잡혀 있으면 이 화면에서 빠져나갈 길이 없다.
+      // 앱을 지웠다 깔면 예전 등록이 이름표를 쥔 채 남는데(기기 id 가 저장소에 있다),
+      // 그게 둘 쌓이면 정작 부모가 자기 가족에 못 들어온다. 실제로 그렇게 막혔다.
+      // 그때 넘겨받을 수 있게 등록된 핸드폰 목록을 미리 읽어 둔다.
+      if (!slots.some((s) => s.kind === 'parent')) {
+        void loadTakeover()
+      }
     } catch (e) {
       // 0009 미적용 서버 — 기기 등록 없이 그대로 들어간다 (부모로 동작)
       if (e instanceof Error && /Could not find the function|PGRST202/.test(e.message)) {
@@ -217,6 +226,48 @@ export function FamilyJoin() {
         return
       }
       fail(e)
+    }
+  }
+
+  /**
+   * 부모 이름표를 쥐고 있는 기기 목록. 이름표가 다 찼을 때만 쓴다.
+   * 이메일과 PIN 을 맞춘 사람만 이 화면에 오므로, 여기서 넘겨받는 걸 허용해도
+   * 권한이 새지 않는다 — 같은 가족의 부모끼리 이름표를 옮기는 것뿐이다.
+   */
+  const [takeover, setTakeover] = useState<
+    { id: string; label: string; lastSeen: string | null }[]
+  >([])
+
+  async function loadTakeover() {
+    try {
+      const { familyDevices } = await import('../lib/device')
+      const all = await familyDevices()
+      setTakeover(
+        all
+          .filter((d) => d.kind === 'parent' && d.label)
+          .map((d) => ({ id: d.id, label: d.label as string, lastSeen: d.lastSeen })),
+      )
+    } catch {
+      // 목록을 못 읽어도 아이 쪽 선택은 여전히 되므로 조용히 넘어간다
+      setTakeover([])
+    }
+  }
+
+  /** 다른 핸드폰이 쓰던 이름표를 이 핸드폰으로 옮긴다 */
+  async function takeOver(deviceRowId: string, label: ParentLabel) {
+    setError(null)
+    setBusy(true)
+    try {
+      const { releaseDeviceById, claimDevice } = await import('../lib/device')
+      await releaseDeviceById(deviceRowId)
+      await claimDevice({ kind: 'parent', label })
+      markUnlocked()
+      await refreshMembership()
+    } catch (e) {
+      fail(e)
+      await loadTakeover()
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -583,13 +634,18 @@ export function FamilyJoin() {
         <div className="notice">
           {signup ? (
             <>
-              메일은 오지 않습니다. 인증 절차가 없으니 <b>PIN 을 꼭 기억해 주세요.</b>
+              메일은 오지 않습니다. 확인 절차가 없으니 <b>PIN 을 꼭 기억해 주세요</b> —
+              잊으면 되찾을 방법이 없습니다.
               <br />
               배우자 핸드폰에서도 <b>같은 이메일과 같은 PIN</b> 으로 들어옵니다.
             </>
           ) : (
             <>
               처음 등록할 때 쓴 이메일과 PIN 을 넣어 주세요.
+              <br />
+              <b>PIN 을 잊었다면</b>, 아직 로그인돼 있는 다른 부모 핸드폰의 설정 &gt; PIN
+              관리에서 새로 정할 수 있습니다. 모든 기기가 로그아웃된 상태라면 되찾을 수
+              없으니 새 이메일로 가족을 다시 만들어야 합니다.
               <br />
               아이 핸드폰은 여기가 아니라 <b>가족 코드</b> 로 붙입니다.
             </>
@@ -733,7 +789,45 @@ export function FamilyJoin() {
           )
         })}
 
-        {parents.length === 0 && kids.length === 0 && (
+        {/*
+          부모 이름표가 둘 다 잡혀 있을 때. 앱을 지웠다 깔면 예전 등록이 남아 이 상태가
+          되는데, 그러면 정작 부모가 자기 가족에 못 들어온다. 넘겨받을 길을 열어 준다.
+        */}
+        {parents.length === 0 && takeover.length > 0 && (
+          <>
+            <div className="label">부모 — 쓰던 핸드폰에서 넘겨받기</div>
+            {takeover.map((d) => (
+              <button
+                key={d.id}
+                className="card tap"
+                onClick={() => void takeOver(d.id, d.label as ParentLabel)}
+                disabled={busy}
+              >
+                <div className="row">
+                  <div className="row" style={{ gap: 10, justifyContent: 'flex-start' }}>
+                    <div className="avatar">{d.label}</div>
+                    <div>
+                      <div>{d.label} 이름표 가져오기</div>
+                      <div className="label">
+                        {d.lastSeen ? `마지막 접속 ${asOfLabel(d.lastSeen)}` : '접속 기록 없음'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="muted">›</span>
+                </div>
+              </button>
+            ))}
+            <div className="notice">
+              엄마·아빠 이름표를 이미 다른 핸드폰이 쓰고 있습니다. 그게 <b>안 쓰는 예전
+              핸드폰</b>(앱을 지웠다 깔았거나 기기를 바꾼 경우)이면 여기서 가져오세요.
+              <br />
+              가져오면 그 핸드폰은 다시 이 화면부터 시작하게 됩니다. <b>기록은 지워지지
+              않습니다.</b>
+            </div>
+          </>
+        )}
+
+        {parents.length === 0 && kids.length === 0 && takeover.length === 0 && (
           <div className="empty">
             고를 수 있는 것이 없습니다.
             <br />
