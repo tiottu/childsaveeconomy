@@ -71,6 +71,35 @@ export type Settings = {
   quote_refresh_min: number
   invest_cap_pct: number
   dividend_to_cash: boolean
+  /** 보상 하나에 필요한 칭찬도장 수 */
+  stamp_goal: number
+}
+
+/**
+ * 칭찬도장.
+ *
+ * requested : 아이가 신청했고 부모를 기다린다
+ * given     : 도장판에 붙어 있다
+ * rejected  : 부모가 이번엔 아니라고 했다
+ * used      : 보상으로 바꿔 썼다
+ */
+export type Stamp = {
+  id: string
+  child_id: string
+  reason: string | null
+  status: 'requested' | 'given' | 'rejected' | 'used'
+  asked_by: 'child' | 'parent'
+  created_at: string
+  decided_at: string | null
+}
+
+export type Reward = {
+  id: string
+  child_id: string
+  title: string
+  /** 그때 도장 몇 개로 받았는지 */
+  stamps: number
+  created_at: string
 }
 
 /** child_asset 뷰. 홈 화면은 이것만 있으면 그려진다. */
