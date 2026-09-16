@@ -161,6 +161,7 @@ export function createMockDb(): Db {
         weekly_allowance: input.weekly_allowance,
         payday: input.payday,
         sort_order: store.children.length + 1,
+        emblem: null,
       })
       commit()
       return childId
@@ -172,6 +173,14 @@ export function createMockDb(): Db {
         Object.assign(c, patch)
         commit()
       }
+    },
+
+    async setEmblem(childId, emblem) {
+      sync()
+      const c = store.children.find((x) => x.id === childId)
+      if (!c) throw new Error('아이를 찾을 수 없습니다')
+      c.emblem = emblem
+      commit()
     },
 
     async addCashTxn(txn: NewCashTxn) {
