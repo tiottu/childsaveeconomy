@@ -51,3 +51,5 @@ https://github.com/tiottu/childsaveeconomy/edit/main/<파일경로>
   안 된다 — 환경변수가 `.env` 파일보다 우선해서 빈 값이 이긴다
 
 배당금 기록은 쓰지 않아 뺐다.
+
+아이 화면은 레벨·연속 저축·업적이 있는 게임 프로필 형태다. 엠블럼은 아이가 고른다.
