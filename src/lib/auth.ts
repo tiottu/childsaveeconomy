@@ -111,8 +111,14 @@ export async function signInParent(
   if (signUp.error) {
     const m = signUp.error.message
     if (/already registered|already exists/i.test(m)) {
-      // 계정은 있는데 위에서 로그인이 안 됐다 = PIN 이 다르다
-      throw new Error('PIN 이 맞지 않습니다. 처음 정한 6자리를 확인해 주세요')
+      // 계정은 있는데 위에서 로그인이 안 됐다. 이유가 둘인데 서버가 구분해 주지 않는다.
+      //  - PIN 을 잘못 넣었다
+      //  - 그 이메일 계정에 애초에 비밀번호가 없다 (예전 메일 인증 방식으로 만든 계정)
+      // 두 번째를 "PIN 이 틀렸다" 고만 말하면, 맞는 PIN 을 넣어도 계속 틀렸다고 나와서
+      // 사용자가 빠져나올 수가 없다. 실제로 그 일이 있었다.
+      throw new Error(
+        '이미 등록된 이메일입니다. PIN 이 다르거나, 예전에 메일 인증으로 만든 계정일 수 있습니다. 다른 이메일로 등록해 보세요.',
+      )
     }
     if (/rate limit/i.test(m)) throw new Error(CONFIRM_EMAIL_HINT)
     if (/password/i.test(m) && /short|least|weak/i.test(m)) {
