@@ -1,0 +1,116 @@
+import type { CashTxn, ChildAsset, Child, Holding, Position, Quote } from './types'
+
+/** 원/달러 환율 티커. 네이버 reutersCode 기준. */
+export const FX_TICKER = 'FX_USDKRW'
+
+/** 원화가 아닌 종목은 환율로 환산한다. 환율을 못 받았으면 0 처리해서 금액을 부풀리지 않는다. */
+export function toKrw(amount: number, currency: string, quotes: Quote[]): number {
+  if (currency === 'KRW') return amount
+  const fx = quotes.find((q) => q.ticker === FX_TICKER)
+  return fx ? amount * fx.price : 0
+}
+
+export function cashBalance(txns: CashTxn[]): number {
+  return txns.reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
+}
+
+/** 이번 달 현금 증감 */
+export function monthlyChange(txns: CashTxn[], now = new Date()): number {
+  const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return txns
+    .filter((t) => t.occurred_on.startsWith(prefix))
+    .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
+}
+
+/** 보유 종목 + 시세 → 화면용 포지션. 비중은 이 아이의 투자 평가금액 기준. */
+export function buildPositions(holdings: Holding[], quotes: Quote[]): Position[] {
+  const rows = holdings
+    .filter((h) => h.quantity > 0)
+    .map((h) => {
+      const q = quotes.find((x) => x.ticker === h.ticker)
+      // 시세를 모르는 종목은 매입가로 본다. 0 으로 두면 보유가 자산에서 사라져서
+      // 현금만 줄어든 것처럼 보인다 — 원금이 없어진 것처럼 읽히는 게 더 나쁘다.
+      const price = q?.price ?? h.avg_price
+      const currency = q?.currency ?? 'KRW'
+      const value = toKrw(h.quantity * price, currency, quotes)
+      const cost = toKrw(h.quantity * h.avg_price, currency, quotes)
+      const pnl = value - cost
+      return {
+        ticker: h.ticker,
+        name: h.name,
+        quantity: h.quantity,
+        avgPrice: h.avg_price,
+        price,
+        currency,
+        asOf: q?.as_of ?? '',
+        value,
+        cost,
+        pnl,
+        pnlPct: cost > 0 ? (pnl / cost) * 100 : 0,
+        weight: 0,
+      }
+    })
+
+  const total = rows.reduce((s, r) => s + r.value, 0)
+  for (const r of rows) {
+    r.weight = total > 0 ? (r.value / total) * 100 : 0
+  }
+  return rows.sort((a, b) => b.value - a.value)
+}
+
+export function assetOf(
+  child: Child,
+  txns: CashTxn[],
+  positions: Position[],
+): ChildAsset {
+  const cash = cashBalance(txns)
+  const invest = positions.reduce((s, p) => s + p.value, 0)
+  const cost = positions.reduce((s, p) => s + p.cost, 0)
+  return {
+    child_id: child.id,
+    name: child.name,
+    cash,
+    invest: Math.round(invest),
+    invest_cost: Math.round(cost),
+    total: cash + Math.round(invest),
+    pnl: Math.round(invest - cost),
+  }
+}
+
+/** 현금 비중 (0~100). 총자산이 0이면 100으로 둔다. */
+export function cashWeight(asset: ChildAsset): number {
+  if (asset.total <= 0) return 100
+  return (asset.cash / asset.total) * 100
+}
+
+export function pnlPct(asset: ChildAsset): number {
+  return asset.invest_cost > 0 ? (asset.pnl / asset.invest_cost) * 100 : 0
+}
+
+/** 목표 진행률 (0~100). basis 에 따라 현금 또는 총자산을 기준으로 한다. */
+export function goalProgress(
+  target: number,
+  basis: 'cash' | 'total',
+  asset: ChildAsset,
+): number {
+  const have = basis === 'cash' ? asset.cash : asset.total
+  if (target <= 0) return 0
+  return Math.min((have / target) * 100, 100)
+}
+
+/**
+ * 목표까지 남은 주 수. 주간 용돈으로만 모을 때의 추정치.
+ * 용돈이 0이면 계산할 수 없으므로 null.
+ */
+export function weeksToGoal(
+  target: number,
+  basis: 'cash' | 'total',
+  asset: ChildAsset,
+  weeklyAllowance: number,
+): number | null {
+  if (weeklyAllowance <= 0) return null
+  const have = basis === 'cash' ? asset.cash : asset.total
+  const remain = target - have
+  if (remain <= 0) return 0
+  return Math.ceil(remain / weeklyAllowance)
+}
