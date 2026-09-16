@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { Field } from '../components/ui'
 import type { RegisteredDevice } from '../lib/device'
 import { asOfLabel, money, num, weekdayName } from '../lib/format'
@@ -10,7 +10,7 @@ export function Settings() {
   const { db, reload, usingSupabase } = useStore()
   const { signOut, setPin, hasPin, isDefaultPin, modeIsFixed } = useSession()
 
-  const [editing, setEditing] = useState<'rate' | 'cap' | 'pin' | 'quote' | 'code' | null>(null)
+  const [editing, setEditing] = useState<'rate' | 'cap' | 'stamp' | 'pin' | 'quote' | 'code' | null>(null)
   /** 가족 코드. 클라우드 모드에서만 의미가 있다. */
   const [familyCode, setFamilyCode] = useState<string | null>(null)
   const [codeDraft, setCodeDraft] = useState('')
@@ -77,7 +77,7 @@ export function Settings() {
     }
   }
 
-  function open(section: 'rate' | 'cap' | 'pin' | 'quote' | 'code', initial = '') {
+  function open(section: 'rate' | 'cap' | 'stamp' | 'pin' | 'quote' | 'code', initial = '') {
     setEditing(section)
     setDraft(initial)
     setError(null)
@@ -115,6 +115,15 @@ export function Settings() {
     if (!v || v < 1 || v > 100) return setError('1에서 100 사이로 입력해 주세요')
     if (!db) return
     await db.updateSettings({ invest_cap_pct: v })
+    await reload()
+    setEditing(null)
+  }
+
+  async function saveStampGoal() {
+    const v = Number(draft.replace(/[^0-9]/g, ''))
+    if (!v || v < 1 || v > 20) return setError('1에서 20 사이로 입력해 주세요')
+    if (!db) return
+    await db.updateSettings({ stamp_goal: v })
     await reload()
     setEditing(null)
   }
@@ -271,6 +280,44 @@ export function Settings() {
               취소
             </button>
             <button className="btn primary" onClick={saveCap}>
+              저장
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="section-title">칭찬도장</div>
+      <div className="card">
+        <button
+          className="list-item"
+          style={{ width: '100%', background: 'none', border: 'none', padding: '10px 0' }}
+          onClick={() => open('stamp', String(settings.stamp_goal))}
+        >
+          <span>보상까지 필요한 도장</span>
+          <span className="label">{settings.stamp_goal}개 ›</span>
+        </button>
+      </div>
+
+      {editing === 'stamp' && (
+        <div className="card col">
+          <Field label="보상까지 필요한 도장 수">
+            <input
+              className="field"
+              type="text"
+              inputMode="numeric"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+            />
+          </Field>
+          <div className="label muted">
+            아이가 어리면 3개 정도가 낫습니다. 이미 준 보상 기록은 그때 기준을 그대로 둡니다.
+          </div>
+          {error && <div className="error">{error}</div>}
+          <div className="btn-row">
+            <button className="btn" onClick={() => setEditing(null)}>
+              취소
+            </button>
+            <button className="btn primary" onClick={saveStampGoal}>
               저장
             </button>
           </div>
