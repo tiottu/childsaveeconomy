@@ -49,3 +49,5 @@ https://github.com/tiottu/childsaveeconomy/edit/main/<파일경로>
 - `vite.config.ts` 의 `base` 는 저장소 이름과 같아야 한다. 틀리면 화면이 하얗게만 뜬다
 - Supabase 주소와 키는 `.env.production` 에 있다. 워크플로에서 환경변수로 덮어쓰면
   안 된다 — 환경변수가 `.env` 파일보다 우선해서 빈 값이 이긴다
+
+배당금 기록은 쓰지 않아 뺐다.
