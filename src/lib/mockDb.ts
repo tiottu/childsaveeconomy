@@ -524,10 +524,12 @@ export function createMockDb(): Db {
       commit()
     },
 
-    async setManualQuote(ticker, name, price) {
+    async setManualQuote(ticker, name, price, currency = 'KRW') {
+      sync()
       const q = store.quotes.find((x) => x.ticker === ticker)
       const now = new Date().toISOString()
       if (q) {
+        // 통화는 그대로 둔다 — 이미 있는 행의 통화가 맞는 값이다
         q.price = price
         q.as_of = now
         q.source = 'manual'
@@ -538,7 +540,7 @@ export function createMockDb(): Db {
           price,
           prev_close: null,
           change_pct: null,
-          currency: 'KRW',
+          currency,
           as_of: now,
           source: 'manual',
         })

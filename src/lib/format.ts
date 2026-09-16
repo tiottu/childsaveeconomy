@@ -85,13 +85,15 @@ export function weekdayName(payday: number): string {
   return WEEKDAYS[Math.min(Math.max(payday, 1), 7) - 1]
 }
 
-/** 다음 용돈날까지 남은 일수. payday 는 1=월 … 7=일 */
+/**
+ * 다음 용돈날까지 남은 일수. payday 는 1=월 … 7=일.
+ * 오늘이 용돈날이면 0 — 예전엔 7 을 돌려줘서 용돈날 아침에 "7일 남았어요" 라고 나왔다.
+ */
 export function daysUntilPayday(payday: number): number {
   const today = new Date()
   // JS 는 0=일요일이므로 1=월 … 7=일 로 맞춘다
   const current = today.getDay() === 0 ? 7 : today.getDay()
-  const diff = (payday - current + 7) % 7
-  return diff === 0 ? 7 : diff
+  return (payday - current + 7) % 7
 }
 
 export function ageFrom(birthYear: number | null): string {

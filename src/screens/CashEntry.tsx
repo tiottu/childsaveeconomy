@@ -42,6 +42,8 @@ export function CashEntry({
 
     if (!childId) return setError('누구의 통장인지 골라 주세요')
     if (!value || value <= 0) return setError('금액을 입력해 주세요')
+    // 날짜 입력칸을 지우면 빈 문자열이 온다. 그대로 저장하면 월별 차트에서 사라진다.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError('날짜를 골라 주세요')
     if (direction === 'out' && asset && value > asset.cash) {
       return setError(`현금이 부족합니다. 잔액 ${money(asset.cash)}`)
     }

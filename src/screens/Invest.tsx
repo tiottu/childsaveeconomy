@@ -158,8 +158,12 @@ export function TickerDetail({
 
   if (!position) return <div className="empty">보유 정보를 찾을 수 없습니다</div>
 
+  // 직접 입력한 가격에는 '오늘 등락' 이 없다. 예전 자동 시세의 전일 종가와 비교하면
+  // 있지도 않은 등락이 찍힌다 — 71,000원을 넣었는데 "+2,000 오늘" 이 나왔다.
   const dayChange =
-    quote?.prev_close && quote.prev_close > 0 ? quote.price - quote.prev_close : null
+    quote?.source !== 'manual' && quote?.prev_close && quote.prev_close > 0
+      ? quote.price - quote.prev_close
+      : null
 
   return (
     <>

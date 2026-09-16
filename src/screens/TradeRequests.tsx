@@ -56,6 +56,15 @@ function candidates(
   return list
 }
 
+/**
+ * 신청 행에는 통화가 없다. 시세에서 찾고, 없으면 티커 모양으로 짐작한다
+ * (네이버 코드는 국내가 숫자 6자리, 해외는 AAPL.O 처럼 점이 있다).
+ * 달러 단가에 '원' 을 붙이면 금액 감각이 1000배 어긋난다.
+ */
+function currencyOf(ticker: string, quotes: Quote[]): string {
+  return quotes.find((q) => q.ticker === ticker)?.currency ?? (ticker.includes('.') ? 'USD' : 'KRW')
+}
+
 function statusChip(s: TradeRequest['status']) {
   if (s === 'requested') return <span className="chip amber">심사 중</span>
   if (s === 'approved') return <span className="chip green">거래 완료</span>
@@ -253,7 +262,8 @@ export function KidTradeRequest({ childId }: { childId: string }) {
                 {statusChip(r.status)}
               </div>
               <div className="label muted" style={{ marginTop: 2 }}>
-                {dayLabel(r.created_at.slice(0, 10))} · 신청할 때 {unitPrice(r.price, 'KRW')}
+                {dayLabel(r.created_at.slice(0, 10))} · 신청할 때{' '}
+                {unitPrice(r.price, currencyOf(r.ticker, quotes))}
               </div>
               {r.reason && <div className="label" style={{ marginTop: 4 }}>{r.reason}</div>}
               <button
@@ -343,7 +353,7 @@ export function ParentTradeRequests({ childId }: { childId: string }) {
       {waiting.map((r) => {
         const now = quotes.find((q) => q.ticker === r.ticker)
         const price = now?.price ?? r.price
-        const currency = now?.currency ?? 'KRW'
+        const currency = currencyOf(r.ticker, quotes)
         const estimate = Math.round(toKrw(r.quantity * price, currency, quotes))
         const held = (positions[childId] ?? []).find((p) => p.ticker === r.ticker)?.quantity ?? 0
         const shortOf = r.direction === 'buy' && asset ? estimate - asset.cash : 0

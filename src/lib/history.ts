@@ -78,15 +78,25 @@ export function monthlyHistory(
   const cashDelta = new Map<string, number>()
   const investDelta = new Map<string, number>()
 
+  const linked = new Set<string>()
   for (const t of cash) {
     const key = monthKey(t.occurred_on)
     const v = t.direction === 'in' ? t.amount : -t.amount
     cashDelta.set(key, (cashDelta.get(key) ?? 0) + v)
+
+    // 매매로 생긴 현금 기록은 그 돈이 투자 주머니로 옮겨간(또는 돌아온) 것이다.
+    // 투자 증감을 **여기서** 잡는다. 매매 행의 수량×단가로 계산하면 미국 종목은
+    // 달러 그대로 더해져서, 테슬라 1주를 사면 현금은 26만원 줄고 투자는 194원만
+    // 늘어 "모은 돈" 그래프가 26만원 꺼졌다. 현금 기록은 언제나 원화다.
+    if (t.trade_id) {
+      linked.add(t.trade_id)
+      investDelta.set(key, (investDelta.get(key) ?? 0) - v)
+    }
   }
+  // 현금 기록이 붙지 않은 매매(있어서는 안 되지만)만 매매 행으로 보충한다
   for (const t of trades) {
+    if (linked.has(t.id)) continue
     const key = monthKey(t.occurred_on)
-    // 매수하면 현금이 투자로 옮겨가고, 매도하면 돌아온다.
-    // 현금 쪽 증감은 cash_txn 에 이미 들어 있으므로 여기서는 투자만 다룬다.
     const amount = Math.round(t.quantity * t.price)
     const v = t.direction === 'buy' ? amount + t.fee : -(amount - t.fee)
     investDelta.set(key, (investDelta.get(key) ?? 0) + v)
@@ -100,11 +110,16 @@ export function monthlyHistory(
     cashSum += cashDelta.get(key) ?? 0
     investSum += investDelta.get(key) ?? 0
     if (!window.includes(key)) continue
+    // 이익을 남기고 다 팔면 투자 원가는 음수가 된다 (넣은 돈보다 많이 돌아왔다).
+    // 그 초과분은 '모은 돈' 이 아니라 번 돈이므로 총합에서 상쇄된다. 현금 칸도 같은 만큼
+    // 빼서 현금 + 투자 = 총합이 늘 맞게 한다 — 안 그러면 "총 30만 = 현금 34만 + 투자 0" 이 나온다.
+    const investPart = Math.max(0, investSum)
+    const cashPart = cashSum + Math.min(0, investSum)
     out.push({
       month: key,
       label: monthLabel(key),
-      cash: Math.max(0, Math.round(cashSum)),
-      invest: Math.max(0, Math.round(investSum)),
+      cash: Math.max(0, Math.round(cashPart)),
+      invest: Math.round(investPart),
       total: Math.max(0, Math.round(cashSum + investSum)),
     })
   }

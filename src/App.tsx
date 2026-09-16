@@ -73,6 +73,8 @@ function parentBack(route: Route): Route {
   switch (route.t) {
     case 'txnEdit':
       return { t: 'cash', childId: route.childId }
+    case 'cashEntry':
+      return route.childId ? { t: 'cash', childId: route.childId } : { t: 'home' }
     case 'ticker':
       return { t: 'invest', childId: route.childId }
     case 'tradeEntry':
@@ -191,15 +193,15 @@ function ParentApp() {
       )
     }
 
-    case 'cashEntry':
+    case 'cashEntry': {
+      // 어느 아이 통장에서 들어왔으면 그 통장으로 돌아간다. 홈으로 튀면 다시 찾아가야 한다.
+      const back = () => setRoute(parentBack(route))
       return (
-        <Screen title="입출금 기록" onBack={() => setRoute({ t: 'home' })}>
-          <CashEntry
-            initialChildId={route.childId}
-            onDone={() => setRoute({ t: 'home' })}
-          />
+        <Screen title="입출금 기록" onBack={back}>
+          <CashEntry initialChildId={route.childId} onDone={back} />
         </Screen>
       )
+    }
 
     case 'invest':
       return (

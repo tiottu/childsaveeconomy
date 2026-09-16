@@ -42,6 +42,7 @@ export function TxnEdit({
   async function save() {
     setError(null)
     if (!value || value <= 0) return setError('금액을 입력해 주세요')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError('날짜를 골라 주세요')
     if (!db) return setError('저장할 수 없습니다')
 
     setBusy(true)

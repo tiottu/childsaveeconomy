@@ -110,8 +110,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const { usingSupabase, membership, deviceRole, refreshMembership } = useStore()
 
   const [localMode, setLocalMode] = useState<Mode | null>(() => readMode())
-  const [unlocked, setUnlocked] = useState(false)
   const [pins, setPins] = useState<PinMap>(() => readPins())
+  /*
+    새로고침하면 저장된 모드로 바로 돌아오는데, 잠금 상태는 저장하지 않으니 여기서
+    다시 정해야 한다. 부모는 언제나 PIN 을 다시 묻는다. 아이는 PIN 을 걸어 둔 경우만
+    묻는다 — 안 걸어 둔 아이에게 물으면 맞출 수 있는 PIN 이 없어서 영영 못 들어간다
+    (실제로 그렇게 갇혔다). 클라우드 모드는 아래 effect 가 다시 정한다.
+  */
+  const [unlocked, setUnlocked] = useState(() => {
+    if (usingSupabase) return false
+    const m = readMode()
+    if (!m || m.kind === 'parent') return false
+    const p = readPins()[m.childId]
+    return !(typeof p === 'string')
+  })
 
   // 클라우드 모드에서는 기기 등록이 모드를 정한다.
   // 이메일을 가족이 공유하면 membership 은 모두 parent 이므로 device 쪽이 우선이다.

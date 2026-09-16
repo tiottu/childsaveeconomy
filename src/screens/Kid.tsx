@@ -181,7 +181,7 @@ export function KidHome({ childId }: { childId: string }) {
             <div>다음 용돈까지</div>
             <div className="label">매주 {weekdayName(child.payday)}요일</div>
           </div>
-          <div className="mid">{days}일</div>
+          <div className="mid">{days === 0 ? '오늘!' : `${days}일`}</div>
         </div>
       )}
 

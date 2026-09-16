@@ -34,6 +34,25 @@ export function Settings() {
   const myTickers = familyTickers(positions, trades)
   const myQuotes = quotes.filter((q) => myTickers.has(q.ticker))
 
+  /**
+   * 현재가를 직접 넣을 수 있는 종목 = 우리가 들고 있는 것 전부.
+   * 시세 행이 아직 없는 종목(시세 없이 기록한 것)도 여기 있어야 값을 넣을 수 있다.
+   * 전에는 시세 목록에서만 골랐어서, 시세가 없는 종목은 영영 가격을 못 넣었다.
+   */
+  const manualTargets: { ticker: string; name: string; currency: string }[] = []
+  for (const list of Object.values(positions)) {
+    for (const p of list) {
+      if (!manualTargets.some((m) => m.ticker === p.ticker)) {
+        manualTargets.push({ ticker: p.ticker, name: p.name, currency: p.currency })
+      }
+    }
+  }
+  for (const q of myQuotes) {
+    if (!manualTargets.some((m) => m.ticker === q.ticker)) {
+      manualTargets.push({ ticker: q.ticker, name: q.name ?? q.ticker, currency: q.currency })
+    }
+  }
+
   const cashCount = Object.values(cash).reduce((s, l) => s + l.length, 0)
   const tradeCount = Object.values(trades).reduce((s, l) => s + l.length, 0)
 
@@ -206,15 +225,21 @@ export function Settings() {
   const pinMatches = pinFilled && draft === draftConfirm
 
   async function saveQuote() {
+    setError(null)
     const v = Number(draft.replace(/[^0-9.]/g, ''))
     const t = quoteTicker.trim()
     if (!t) return setError('종목 코드를 골라 주세요')
     if (!v || v <= 0) return setError('현재가를 입력해 주세요')
     if (!db) return
-    const known = quotes.find((q) => q.ticker === t)
-    await db.setManualQuote(t, known?.name ?? t, v)
-    await reload()
-    setEditing(null)
+    const known = manualTargets.find((q) => q.ticker === t)
+    try {
+      await db.setManualQuote(t, known?.name ?? t, v, known?.currency ?? 'KRW')
+      await reload()
+      setEditing(null)
+    } catch (e) {
+      // 전에는 여기서 던진 오류가 아무 데도 안 보였다 — 저장 버튼이 그냥 먹통이었다
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   return (
@@ -388,11 +413,11 @@ export function Settings() {
         ))}
       </div>
       )}
-      {myQuotes.length > 0 && (
+      {manualTargets.length > 0 && (
         <button
           className="btn dashed"
           onClick={() => {
-            setQuoteTicker(myQuotes[0]?.ticker ?? '')
+            setQuoteTicker(manualTargets[0]?.ticker ?? '')
             open('quote')
           }}
         >
@@ -408,9 +433,10 @@ export function Settings() {
               value={quoteTicker}
               onChange={(e) => setQuoteTicker(e.target.value)}
             >
-              {myQuotes.map((q) => (
+              {manualTargets.map((q) => (
                 <option key={q.ticker} value={q.ticker}>
-                  {q.name ?? q.ticker}
+                  {q.name}
+                  {q.currency !== 'KRW' && ` (${q.currency})`}
                 </option>
               ))}
             </select>

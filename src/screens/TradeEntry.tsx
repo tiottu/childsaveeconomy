@@ -234,6 +234,7 @@ export function TradeEntry({
     if (isForeign && fxRate <= 0) return setError('환율을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요')
     if (!q || q <= 0) return setError('수량을 입력해 주세요')
     if (!p || p <= 0) return setError('단가를 입력해 주세요')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError('날짜를 골라 주세요')
     if (direction === 'buy' && asset && amount > asset.cash) {
       return setError(`현금이 부족합니다. 잔액 ${money(asset.cash)}, 필요 ${money(amount)}`)
     }

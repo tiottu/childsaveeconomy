@@ -103,7 +103,11 @@ export type Db = {
    * 도장 소진과 보상 기록이 함께 일어나야 하므로 한 번에 처리한다.
    */
   redeemStamps(childId: string, title: string): Promise<void>
-  setManualQuote(ticker: string, name: string, price: number): Promise<void>
+  /**
+   * 현재가 직접 입력. currency 를 안 주면 원화로 본다.
+   * 미국 종목에 원화로 써 넣으면 원화 환산이 두 번 되어 금액이 1000배 어긋난다.
+   */
+  setManualQuote(ticker: string, name: string, price: number, currency?: string): Promise<void>
   /** 시세 서버에서 받아온 값을 저장한다. 평가금액 계산이 최신 값을 쓰게 된다. */
   saveQuote(quote: Quote): Promise<void>
   updateSettings(patch: Partial<Settings>): Promise<void>

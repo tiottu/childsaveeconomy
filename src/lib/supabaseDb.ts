@@ -342,13 +342,13 @@ export function createSupabaseDb(): Db {
       }
     },
 
-    async setManualQuote(ticker, name, price) {
+    async setManualQuote(ticker, name, price, currency = 'KRW') {
       const { error } = await sb.from('quote').upsert(
         {
           ticker,
           name,
           price,
-          currency: 'KRW',
+          currency,
           as_of: new Date().toISOString(),
           source: 'manual',
         },
