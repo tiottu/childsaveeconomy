@@ -43,6 +43,13 @@ export type Db = {
     payday: number
   }): Promise<string>
   updateChild(id: string, patch: Partial<Omit<Child, 'id'>>): Promise<void>
+  /**
+   * 엠블럼 바꾸기. 아이 본인도 할 수 있어야 해서 따로 둔다.
+   *
+   * 아이 기기에는 child 표 쓰기 권한이 없다 (있으면 이름·용돈까지 고칠 수 있다).
+   * RLS 로는 "이 컬럼만" 을 막을 수 없어서 emblem 한 칸만 건드리는 함수를 쓴다.
+   */
+  setEmblem(childId: string, emblem: string): Promise<void>
 
   addCashTxn(txn: NewCashTxn): Promise<void>
   /**
