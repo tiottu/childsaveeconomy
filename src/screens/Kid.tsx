@@ -130,13 +130,19 @@ export function KidHome({ childId }: { childId: string }) {
         </div>
       </div>
 
-      <div className="card row">
-        <div>
-          <div>다음 용돈까지</div>
-          <div className="label">매주 {weekdayName(child.payday)}요일</div>
+      {/*
+        용돈이 0원인 아이는 정해진 용돈날이 없다. 그런 아이에게 "다음 용돈까지 3일" 을
+        보여 주면 받을 것도 없는 날을 기다리게 된다. 아예 감춘다.
+      */}
+      {child.weekly_allowance > 0 && (
+        <div className="card row">
+          <div>
+            <div>다음 용돈까지</div>
+            <div className="label">매주 {weekdayName(child.payday)}요일</div>
+          </div>
+          <div className="mid">{days}일</div>
         </div>
-        <div className="mid">{days}일</div>
-      </div>
+      )}
 
       {/*
         등급 트랙. 처음엔 업적을 한 번 받으면 끝나는 별로 만들었는데, 3년치 기록을
@@ -389,14 +395,19 @@ export function KidProfile({ childId }: { childId: string }) {
       </div>
 
       <div className="card">
-        <div className="list-item">
-          <span>주간 용돈</span>
-          <span className="label">{money(child.weekly_allowance)}</span>
-        </div>
-        <div className="list-item">
-          <span>받는 날</span>
-          <span className="label">매주 {weekdayName(child.payday)}요일</span>
-        </div>
+        {/* 용돈이 0원이면 용돈날도 없다 — 홈 화면과 같은 규칙으로 감춘다 */}
+        {child.weekly_allowance > 0 && (
+          <>
+            <div className="list-item">
+              <span>주간 용돈</span>
+              <span className="label">{money(child.weekly_allowance)}</span>
+            </div>
+            <div className="list-item">
+              <span>받는 날</span>
+              <span className="label">매주 {weekdayName(child.payday)}요일</span>
+            </div>
+          </>
+        )}
         <div className="list-item">
           <span>현금 이자율</span>
           <span className="label">연 {settings.interest_rate}%</span>

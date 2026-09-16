@@ -6,7 +6,7 @@ import { PARENT_KEY, PIN_LENGTH, useSession } from '../state/session'
 import { useData, useStore } from '../state/store'
 
 export function Settings() {
-  const { children, settings, quotes } = useData()
+  const { children, settings, quotes, cash, trades, positions, goals, stamps, rewards } = useData()
   const { db, reload, usingSupabase } = useStore()
   const { signOut, setPin, hasPin, isDefaultPin, modeIsFixed } = useSession()
 
@@ -24,6 +24,51 @@ export function Settings() {
 
   /** 이 가족에 등록된 핸드폰들. 유령 등록을 정리할 수 있게 보여준다. */
   const [devices, setDevices] = useState<RegisteredDevice[]>([])
+
+  /** 백업 결과 한 줄. 공유를 취소하면 아무 말도 하지 않는다. */
+  const [saved, setSaved] = useState<string | null>(null)
+  const [backing, setBacking] = useState(false)
+
+  const cashCount = Object.values(cash).reduce((s, l) => s + l.length, 0)
+  const tradeCount = Object.values(trades).reduce((s, l) => s + l.length, 0)
+
+  async function backup(kind: 'csv' | 'json') {
+    setError(null)
+    setSaved(null)
+    setBacking(true)
+    try {
+      const { buildCsv, buildJson, saveTextFile, stamp } = await import('../lib/backup')
+      // 보유 종목은 화면용(Position)으로 들고 있다. 되돌릴 때 필요한 값만 뽑아 담는다.
+      const holdings = Object.fromEntries(
+        Object.entries(positions).map(([childId, list]) => [
+          childId,
+          list.map((p) => ({
+            child_id: childId,
+            ticker: p.ticker,
+            name: p.name,
+            quantity: p.quantity,
+            avg_price: p.avgPrice,
+          })),
+        ]),
+      )
+      const input = { children, cash, trades, holdings, goals, stamps, rewards, settings }
+      const day = stamp()
+      const result =
+        kind === 'csv'
+          ? await saveTextFile(`우리아이통장_거래내역_${day}.csv`, 'text/csv', buildCsv(input))
+          : await saveTextFile(
+              `우리아이통장_전체백업_${day}.json`,
+              'application/json',
+              buildJson(input),
+            )
+      if (result === 'shared') setSaved('공유했습니다')
+      if (result === 'downloaded') setSaved('내려받았습니다. 파일 앱을 확인해 주세요')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBacking(false)
+    }
+  }
 
   // 클라우드 모드에서는 가족 코드를 보여준다. 아이 핸드폰을 붙일 때 알려줘야 하는 값이다.
   useEffect(() => {
@@ -582,6 +627,36 @@ export function Settings() {
           </div>
         </>
       )}
+
+      {/*
+        백업. 서버가 죽거나 계정을 잃어도 아이의 기록이 남아 있어야 한다.
+        이미 화면에 불려온 데이터로 만들기 때문에 서버를 다시 부르지 않는다.
+      */}
+      <div className="section-title">백업</div>
+      <div className="card">
+        <div className="list-item">
+          <span>담길 기록</span>
+          <span className="label">
+            입출금 {num(cashCount)}건 · 매매 {num(tradeCount)}건
+          </span>
+        </div>
+      </div>
+      <div className="btn-row">
+        <button className="btn" disabled={backing} onClick={() => void backup('csv')}>
+          거래내역 (엑셀)
+        </button>
+        <button className="btn" disabled={backing} onClick={() => void backup('json')}>
+          전체 백업
+        </button>
+      </div>
+      {saved && <div className="label muted">{saved}</div>}
+      <div className="notice">
+        핸드폰에서는 <b>공유 창</b>이 열립니다. 카카오톡·드라이브·파일 앱 등 원하는 곳에
+        저장하세요.
+        <br />
+        <b>거래내역</b>은 엑셀에서 바로 열리고, <b>전체 백업</b>은 되돌릴 때 쓰는
+        파일입니다 (도장·목표·보상까지 들어갑니다).
+      </div>
 
       <div className="section-title">기타</div>
       <div className="card">

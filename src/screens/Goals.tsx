@@ -12,6 +12,8 @@ function GoalCard({
   index,
   onApprove,
   onCancel,
+  onAchieve,
+  onUndo,
 }: {
   goal: Goal
   asset: ChildAsset
@@ -19,6 +21,8 @@ function GoalCard({
   index: number
   onApprove?: () => void
   onCancel?: () => void
+  onAchieve?: () => void
+  onUndo?: () => void
 }) {
   const progress = goalProgress(goal.target_amount, goal.basis, asset)
   const weeks = weeksToGoal(goal.target_amount, goal.basis, asset, weekly)
@@ -73,13 +77,31 @@ function GoalCard({
                 : `약 ${weeks}주 남음`}
         </span>
       </div>
-      {onCancel && goal.status === 'active' && (
+      {/*
+        달성은 부모가 눌러 주는 것이다. 돈이 모였다고 저절로 달성이 되면 안 된다 —
+        실제로 사 줬는지는 앱이 알 수 없고, 아이의 '달성한 목표' 기록이 멋대로 늘어난다.
+      */}
+      {goal.status === 'active' && (onAchieve || onCancel) && (
+        <div className="btn-row" style={{ marginTop: 9 }}>
+          {onCancel && (
+            <button className="btn small" style={{ color: 'var(--text-secondary)' }} onClick={onCancel}>
+              목표 내리기
+            </button>
+          )}
+          {onAchieve && (
+            <button className="btn small primary" onClick={onAchieve}>
+              달성했어요
+            </button>
+          )}
+        </div>
+      )}
+      {goal.status === 'achieved' && onUndo && (
         <button
           className="btn small"
           style={{ marginTop: 9, color: 'var(--text-secondary)' }}
-          onClick={onCancel}
+          onClick={onUndo}
         >
-          목표 내리기
+          달성 취소
         </button>
       )}
     </div>
@@ -117,6 +139,8 @@ export function ParentGoals() {
                 index={i}
                 onApprove={() => void setStatus(g.id, 'active')}
                 onCancel={() => void setStatus(g.id, 'canceled')}
+                onAchieve={() => void setStatus(g.id, 'achieved')}
+                onUndo={() => void setStatus(g.id, 'active')}
               />
             ))}
           </div>

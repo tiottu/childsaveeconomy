@@ -407,6 +407,21 @@ button.chip::after {
   color: var(--accent-text);
 }
 
+/* 칭찬도장 나무의 단계 표시 — 나무 바로 아래 한 줄 */
+.grow-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.grow-stage {
+  font-size: 15px;
+  font-weight: 500;
+}
+
 .emblem-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));

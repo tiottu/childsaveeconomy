@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { GrowthCaption, GrowthTree } from '../components/GrowthTree'
 import { Field, ProgressBar, Toggle } from '../components/ui'
 import { dayLabel } from '../lib/format'
 import { useData, useStore } from '../state/store'
@@ -141,6 +142,9 @@ export function ParentStamps({
 
       <div className="card" style={{ textAlign: 'center' }}>
         <div className="label">모은 도장</div>
+        {/* 아이 화면과 같은 나무를 보여준다 — 아이가 무엇을 보고 있는지 부모도 알아야 한다 */}
+        <GrowthTree count={given.length} goal={goal} size={104} />
+        <GrowthCaption count={given.length} goal={goal} />
         <div style={{ margin: '10px 0' }}>
           <Board count={given.length} goal={goal} />
         </div>
@@ -321,6 +325,9 @@ export function KidStamps({ childId }: { childId: string }) {
             {given.length} / {goal}
           </span>
         </div>
+        {/* 도장이 쌓이는 걸 나무가 자라는 것으로 보여준다 */}
+        <GrowthTree count={given.length} goal={goal} size={140} />
+        <GrowthCaption count={given.length} goal={goal} />
         <div style={{ margin: '10px 0' }}>
           <ProgressBar
             pct={goal > 0 ? (given.length / goal) * 100 : 0}
