@@ -17,7 +17,9 @@ import type {
   Goal,
   Position,
   Quote,
+  Reward,
   Settings,
+  Stamp,
   Trade,
 } from '../lib/types'
 
@@ -29,6 +31,9 @@ type Data = {
   /** 아이별 매매 이력. 자산 추이 차트가 투자 원가를 계산할 때 쓴다. */
   trades: Record<string, Trade[]>
   goals: Goal[]
+  /** 칭찬도장. 신청·받음·쓴 것이 다 들어 있고 화면에서 상태로 걸러 쓴다. */
+  stamps: Stamp[]
+  rewards: Reward[]
   quotes: Quote[]
   settings: Settings
 }
@@ -60,6 +65,8 @@ const empty: Data = {
   positions: {},
   trades: {},
   goals: [],
+  stamps: [],
+  rewards: [],
   quotes: [],
   settings: {
     interest_rate: 5,
@@ -67,6 +74,7 @@ const empty: Data = {
     quote_refresh_min: 15,
     invest_cap_pct: 70,
     dividend_to_cash: true,
+    stamp_goal: 5,
   },
 }
 
@@ -94,12 +102,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async (instance: Db) => {
     try {
-      const [kids, assets, goals, quotes, settings] = await Promise.all([
+      const [kids, assets, goals, quotes, settings, stamps, rewards] = await Promise.all([
         instance.listChildren(),
         instance.listAssets(),
         instance.listGoals(),
         instance.listQuotes(),
         instance.getSettings(),
+        instance.listStamps(),
+        instance.listRewards(),
       ])
 
       const cash: Record<string, CashTxn[]> = {}
@@ -118,7 +128,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       )
 
-      setData({ children: kids, assets, cash, positions, trades, goals, quotes, settings })
+      setData({
+        children: kids,
+        assets,
+        cash,
+        positions,
+        trades,
+        goals,
+        stamps,
+        rewards,
+        quotes,
+        settings,
+      })
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
