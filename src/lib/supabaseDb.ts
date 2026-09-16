@@ -140,6 +140,23 @@ export function createSupabaseDb(): Db {
       if (error) throw new Error(error.message)
     },
 
+    async setEmblem(id, emblem) {
+      // 아이 기기는 이 함수로만 고칠 수 있다. 부모는 표를 직접 고쳐도 되지만,
+      // 같은 길을 쓰면 분기가 하나 줄고 서버가 값도 검사해 준다.
+      const { error } = await sb.rpc('set_my_emblem', { p_emblem: emblem })
+      if (!error) return
+
+      const missing =
+        error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      if (missing) {
+        throw new Error('엠블럼 기능이 아직 서버에 올라가지 않았습니다 (set_my_emblem)')
+      }
+
+      // 부모 계정은 app_child_id() 가 없어서 위 함수가 거부한다. 그때는 직접 고친다.
+      const { error: direct } = await sb.from('child').update({ emblem }).eq('id', id)
+      if (direct) throw new Error(direct.message)
+    },
+
     async addCashTxn(txn: NewCashTxn) {
       const { error } = await sb.from('cash_txn').insert(txn)
       if (error) throw new Error(error.message)
