@@ -281,6 +281,41 @@ button.chip::after {
   background: var(--accent-bg);
   border-radius: 12px;
   padding: 14px;
+  --rank-text: var(--accent-text);
+  --rank-fill: var(--accent-fill);
+}
+
+/*
+  칭호 7단계에 맞춰 프로필 카드도 같이 세진다. 색만 바꾸고 글자는 어둡게 남겨
+  둔다 — 화려하게 만들려고 읽기 어려워지면 안 된다.
+*/
+.profile.rank-1 { background: #f1efe8; --rank-text: #55534e; --rank-fill: #8a8981; }
+.profile.rank-2 { background: #f7f0e6; --rank-text: #7a5320; --rank-fill: #b07b3e; }
+.profile.rank-3 { background: #eaf1f6; --rank-text: #2c5878; --rank-fill: #6b8ea8; }
+.profile.rank-4 { background: #fbf3dd; --rank-text: #7d5a07; --rank-fill: #c9962a; }
+.profile.rank-5 { background: #fceee7; --rank-text: #98401f; --rank-fill: #d85a30; }
+.profile.rank-6 {
+  background: linear-gradient(135deg, #efe9fd, #f6ecfb);
+  --rank-text: #4a2f9c;
+  --rank-fill: #6a3fc0;
+}
+.profile.rank-7 {
+  background: linear-gradient(135deg, #fbe9ec, #fdf3e2);
+  --rank-text: #8f2031;
+  --rank-fill: #b4283c;
+  box-shadow: inset 0 0 0 1.5px #e3b5bd;
+}
+
+.profile-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rank-text);
+}
+
+/* 레벨 칩도 등급 색을 따라간다 */
+.chip.rank-chip {
+  background: var(--rank-fill);
+  color: #fff;
 }
 
 .profile-top {
@@ -292,11 +327,11 @@ button.chip::after {
 .profile-name {
   font-size: 17px;
   font-weight: 500;
-  color: var(--accent-text);
+  color: var(--rank-text);
 }
 
 .profile .label {
-  color: var(--accent-text);
+  color: var(--rank-text);
 }
 
 .profile-xp {

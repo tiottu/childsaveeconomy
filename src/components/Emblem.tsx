@@ -115,6 +115,160 @@ function Shape({ k }: { k: EmblemKey }) {
   }
 }
 
+// ---------------------------------------------------------------- 등급 테두리
+
+/**
+ * 칭호 단계(1~7)에 따라 세지는 엠블럼 테두리.
+ *
+ * 레벨이 올라도 화면이 그대로면 오른 걸 모른다. 숫자만 1 늘어나는 것보다
+ * 테두리가 눈에 띄게 달라지는 쪽이 아이에게 훨씬 크게 읽힌다.
+ *
+ * 단계를 따로 만들지 않고 이미 있는 칭호(저축 새싹 … 저축의 전설)에 맞췄다.
+ * 이름표와 테두리가 다른 이야기를 하면 안 된다.
+ */
+type Frame = {
+  /** 테두리 색 */
+  color: string
+  /** 네모(둥근) 인가 팔각인가 */
+  oct: boolean
+  width: number
+  /** 못 장식 개수 — 0, 4(모서리), 8(모서리+변) */
+  studs: 0 | 4 | 8
+  /** 바깥으로 뻗는 뿔 개수 — 0, 4(변), 8(변+모서리) */
+  spikes: 0 | 4 | 8
+  /** 안쪽에 한 겹 더 */
+  doubled?: boolean
+  /** 못 장식 색을 따로 쓴다 (전설) */
+  studColor?: string
+  /** 위쪽 보석 */
+  gem?: string
+}
+
+const FRAMES: Frame[] = [
+  { color: '#a8a6a0', oct: false, width: 3, studs: 0, spikes: 0 }, // 1 저축 새싹
+  { color: '#b07b3e', oct: false, width: 3.5, studs: 4, spikes: 0 }, // 2 견습생
+  { color: '#6b8ea8', oct: true, width: 4, studs: 4, spikes: 0 }, // 3 탐험가
+  { color: '#c9962a', oct: true, width: 4.5, studs: 8, spikes: 0 }, // 4 모험가
+  { color: '#d85a30', oct: true, width: 5, studs: 8, spikes: 4 }, // 5 달인
+  { color: '#6a3fc0', oct: true, width: 5, studs: 8, spikes: 4, doubled: true }, // 6 마스터
+  {
+    color: '#b4283c',
+    oct: true,
+    width: 5.5,
+    studs: 8,
+    spikes: 8,
+    doubled: true,
+    studColor: '#d4a017',
+    gem: '#d4a017',
+  }, // 7 저축의 전설
+]
+
+const OCT = '26,10 74,10 90,26 90,74 74,90 26,90 10,74 10,26'
+const OCT_INNER = '30,17 70,17 83,30 83,70 70,83 30,83 17,70 17,30'
+
+/** 모서리 4곳 · 변 4곳의 못 자리 */
+const STUD_CORNER = [
+  [21, 21],
+  [79, 21],
+  [79, 79],
+  [21, 79],
+]
+const STUD_EDGE = [
+  [50, 11],
+  [89, 50],
+  [50, 89],
+  [11, 50],
+]
+
+/** 변에서 뻗는 뿔 (위·오른쪽·아래·왼쪽) */
+const SPIKE_EDGE = [
+  'M50 0 L42 12 L58 12 Z',
+  'M100 50 L88 42 L88 58 Z',
+  'M50 100 L42 88 L58 88 Z',
+  'M0 50 L12 42 L12 58 Z',
+]
+/** 모서리에서 뻗는 뿔 */
+const SPIKE_CORNER = [
+  'M14 14 L30 16 L16 30 Z',
+  'M86 14 L84 30 L70 16 Z',
+  'M86 86 L70 84 L84 70 Z',
+  'M14 86 L16 70 L30 84 Z',
+]
+
+export function RankFrame({ grade }: { grade: number }) {
+  const f = FRAMES[Math.max(1, Math.min(FRAMES.length, grade)) - 1]
+  const studs = f.studs === 8 ? [...STUD_CORNER, ...STUD_EDGE] : f.studs === 4 ? STUD_CORNER : []
+  const spikes =
+    f.spikes === 8 ? [...SPIKE_EDGE, ...SPIKE_CORNER] : f.spikes === 4 ? SPIKE_EDGE : []
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      width="100%"
+      height="100%"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0 }}
+    >
+      {spikes.map((d) => (
+        <path key={d} d={d} fill={f.color} />
+      ))}
+      {f.oct ? (
+        <polygon points={OCT} fill="none" stroke={f.color} strokeWidth={f.width} />
+      ) : (
+        <rect
+          x="11"
+          y="11"
+          width="78"
+          height="78"
+          rx="15"
+          fill="none"
+          stroke={f.color}
+          strokeWidth={f.width}
+        />
+      )}
+      {f.doubled && (
+        <polygon points={OCT_INNER} fill="none" stroke={f.color} strokeWidth="1.6" opacity="0.6" />
+      )}
+      {studs.map(([x, y]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r="3.4" fill={f.studColor ?? f.color} />
+      ))}
+      {f.gem && <path d="M50 3 L56 10 L50 17 L44 10 Z" fill={f.gem} />}
+    </svg>
+  )
+}
+
+/** 테두리를 두른 엠블럼. 레벨이 오르면 테두리가 바뀐다. */
+export function RankedEmblem({
+  k,
+  grade,
+  size = 64,
+}: {
+  k: EmblemKey
+  grade: number
+  size?: number
+}) {
+  return (
+    <div
+      style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}
+      role="img"
+      aria-label={emblemName(k)}
+    >
+      <RankFrame grade={grade} />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Emblem k={k} size={Math.round(size * 0.46)} />
+      </div>
+    </div>
+  )
+}
+
 export function Emblem({ k, size = 34 }: { k: EmblemKey; size?: number }) {
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} role="img" aria-label={emblemName(k)}>

@@ -32,12 +32,12 @@ export function Settings() {
   const cashCount = Object.values(cash).reduce((s, l) => s + l.length, 0)
   const tradeCount = Object.values(trades).reduce((s, l) => s + l.length, 0)
 
-  async function backup(kind: 'csv' | 'json') {
+  async function backup(kind: 'excel' | 'json') {
     setError(null)
     setSaved(null)
     setBacking(true)
     try {
-      const { buildCsv, buildJson, saveTextFile, stamp } = await import('../lib/backup')
+      const { buildWorkbook, buildJsonBlob, saveFile, stamp } = await import('../lib/backup')
       // 보유 종목은 화면용(Position)으로 들고 있다. 되돌릴 때 필요한 값만 뽑아 담는다.
       const holdings = Object.fromEntries(
         Object.entries(positions).map(([childId, list]) => [
@@ -54,13 +54,9 @@ export function Settings() {
       const input = { children, cash, trades, holdings, goals, stamps, rewards, settings }
       const day = stamp()
       const result =
-        kind === 'csv'
-          ? await saveTextFile(`우리아이통장_거래내역_${day}.csv`, 'text/csv', buildCsv(input))
-          : await saveTextFile(
-              `우리아이통장_전체백업_${day}.json`,
-              'application/json',
-              buildJson(input),
-            )
+        kind === 'excel'
+          ? await saveFile(`우리아이통장_${day}.xlsx`, buildWorkbook(input))
+          : await saveFile(`우리아이통장_전체백업_${day}.json`, buildJsonBlob(input))
       if (result === 'shared') setSaved('공유했습니다')
       if (result === 'downloaded') setSaved('내려받았습니다. 파일 앱을 확인해 주세요')
     } catch (e) {
@@ -642,8 +638,8 @@ export function Settings() {
         </div>
       </div>
       <div className="btn-row">
-        <button className="btn" disabled={backing} onClick={() => void backup('csv')}>
-          거래내역 (엑셀)
+        <button className="btn primary" disabled={backing} onClick={() => void backup('excel')}>
+          엑셀 파일 받기
         </button>
         <button className="btn" disabled={backing} onClick={() => void backup('json')}>
           전체 백업
@@ -651,11 +647,13 @@ export function Settings() {
       </div>
       {saved && <div className="label muted">{saved}</div>}
       <div className="notice">
-        핸드폰에서는 <b>공유 창</b>이 열립니다. 카카오톡·드라이브·파일 앱 등 원하는 곳에
-        저장하세요.
+        <b>엑셀 파일</b>은 거래내역·보유종목·칭찬도장·목표 네 장으로 만들어집니다. 카톡으로
+        보내도 눌러서 바로 열립니다.
         <br />
-        <b>거래내역</b>은 엑셀에서 바로 열리고, <b>전체 백업</b>은 되돌릴 때 쓰는
-        파일입니다 (도장·목표·보상까지 들어갑니다).
+        <b>전체 백업</b>은 되돌릴 때 쓰는 파일입니다. 사람이 읽기보다 그대로 보관하는 쪽입니다.
+        <br />
+        핸드폰에서는 <b>공유 창</b>이 열립니다 — 카카오톡(나에게 보내기)·드라이브·파일 앱 등
+        원하는 곳에 저장하세요.
       </div>
 
       <div className="section-title">기타</div>

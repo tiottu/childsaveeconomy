@@ -36,6 +36,14 @@ export type Level = {
   toNext: number
   /** 0~100 */
   pct: number
+  /**
+   * 칭호 단계 1~7. 프로필 테두리가 이 값으로 세진다 —
+   * 레벨이 올라도 화면이 똑같으면 오른 걸 모른다.
+   */
+  grade: number
+  /** 다음 칭호와 그게 열리는 레벨. 최고 칭호면 null */
+  nextTitle: string | null
+  nextTitleAt: number | null
 }
 
 export function levelOf(stamps: Stamp[]): Level {
@@ -43,16 +51,27 @@ export function levelOf(stamps: Stamp[]): Level {
   const xp = stamps.filter((s) => s.status === 'given' || s.status === 'used').length
   const level = Math.floor(xp / STAMPS_PER_LEVEL) + 1
   const inLevel = xp % STAMPS_PER_LEVEL
-  const title = TITLES.find((t) => level >= t.min)?.title ?? '저축 새싹'
+
+  // TITLES 는 높은 레벨부터 적어 두었다. 처음 걸리는 것이 지금 칭호, 그 앞이 다음 칭호다.
+  const i = TITLES.findIndex((t) => level >= t.min)
+  const here = i === -1 ? TITLES[TITLES.length - 1] : TITLES[i]
+  const next = i <= 0 ? null : TITLES[i - 1]
+
   return {
     level,
-    title,
+    title: here.title,
     xp,
     inLevel,
     toNext: STAMPS_PER_LEVEL - inLevel,
     pct: (inLevel / STAMPS_PER_LEVEL) * 100,
+    grade: i === -1 ? 1 : TITLES.length - i,
+    nextTitle: next?.title ?? null,
+    nextTitleAt: next?.min ?? null,
   }
 }
+
+/** 칭호 단계 수. 테두리 그림이 이 수만큼 있다. */
+export const GRADE_COUNT = TITLES.length
 
 // ---------------------------------------------------------------- 주 단위 계산
 

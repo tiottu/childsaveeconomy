@@ -1,7 +1,7 @@
 import { AssetChart } from '../components/AssetChart'
-import { EMBLEMS, EmblemTile, emblemOf, type EmblemKey } from '../components/Emblem'
-import { ProgressBar, TickerBadge, colorOf } from '../components/ui'
-import { monthlyChange } from '../lib/compute'
+import { EMBLEMS, EmblemTile, RankedEmblem, emblemOf, type EmblemKey } from '../components/Emblem'
+import { MixBar, ProgressBar, TickerBadge, colorOf } from '../components/ui'
+import { cashWeight, monthlyChange, pnlPct } from '../lib/compute'
 import { monthlyHistory } from '../lib/history'
 import {
   badgesOf,
@@ -54,19 +54,29 @@ function trackValue(t: Track): string {
   return trackAmount(t, t.value)
 }
 
-/** 이름·레벨·칭호·경험치. 아이 화면 맨 위에 항상 같은 모양으로 둔다. */
+/**
+ * 이름·레벨·칭호·경험치. 아이 화면 맨 위에 항상 같은 모양으로 둔다.
+ *
+ * 레벨이 오르면 카드 색과 엠블럼 테두리가 같이 세진다 (칭호 7단계).
+ * 숫자만 1 늘어나는 것보다 그림이 달라지는 쪽이 아이에게 크게 읽힌다.
+ */
 function ProfileCard({ child, level }: { child: Child; level: Level }) {
   const k = emblemOf(child)
   return (
-    <div className="profile">
+    <div className={`profile rank-${level.grade}`}>
       <div className="profile-top">
-        <EmblemTile k={k} size={56} />
+        <RankedEmblem k={k} grade={level.grade} size={64} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="row" style={{ gap: 6, justifyContent: 'flex-start' }}>
             <span className="profile-name">{child.name}</span>
-            <span className="chip">Lv.{level.level}</span>
+            <span className="chip rank-chip">Lv.{level.level}</span>
           </div>
-          <div className="label">{level.title}</div>
+          <div className="profile-title">{level.title}</div>
+          {level.nextTitle && (
+            <div className="label">
+              Lv.{level.nextTitleAt} 에서 {level.nextTitle}
+            </div>
+          )}
         </div>
       </div>
       <div className="profile-xp">
@@ -74,7 +84,7 @@ function ProfileCard({ child, level }: { child: Child; level: Level }) {
           <span>다음 레벨까지</span>
           <span>도장 {level.toNext}개</span>
         </div>
-        <ProgressBar pct={level.pct} color="var(--accent-fill)" />
+        <ProgressBar pct={level.pct} color="var(--rank-fill, var(--accent-fill))" />
       </div>
     </div>
   )
@@ -111,11 +121,35 @@ export function KidHome({ childId }: { childId: string }) {
     <>
       <ProfileCard child={child} level={lv} />
 
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="label">내 전체 재산</div>
-          <div className="stat-value">{money(asset.total)}</div>
+      {/*
+        현금과 주식을 따로 보여준다. 부모 화면과 같은 방식이다 — 아이도 "내 돈이
+        어디에 얼마나 있는지" 를 알아야 한다. 합계만 보면 주식이 오른 건지
+        용돈을 모은 건지 구분이 안 된다.
+      */}
+      <div className="card">
+        <div className="row">
+          <span className="label">내 전체 재산</span>
+          {asset.invest_cost > 0 && (
+            <span className={`label ${asset.pnl >= 0 ? 'up' : 'down'}`}>
+              주식 {signed(asset.pnl)} ({pct(pnlPct(asset))})
+            </span>
+          )}
         </div>
+        <div className="big">{money(asset.total)}</div>
+        <div style={{ marginTop: 10 }}>
+          <MixBar cashPct={cashWeight(asset)} />
+        </div>
+        <div className="row label" style={{ marginTop: 5 }}>
+          <span>
+            <span style={{ color: 'var(--accent-fill)' }}>■</span> 현금 {money(asset.cash)}
+          </span>
+          <span>
+            <span style={{ color: 'var(--success-fill)' }}>■</span> 주식 {money(asset.invest)}
+          </span>
+        </div>
+      </div>
+
+      <div className="stat-grid">
         <div className="stat">
           <div className="label">이번달 모은 돈</div>
           <div className={`stat-value ${month >= 0 ? 'up' : 'down'}`}>{signed(month)}</div>
@@ -127,6 +161,12 @@ export function KidHome({ childId }: { childId: string }) {
         <div className="stat">
           <div className="label">모은 도장</div>
           <div className="stat-value">{lv.xp}</div>
+        </div>
+        <div className="stat">
+          <div className="label">업적</div>
+          <div className="stat-value">
+            {earned} / {badges.length}
+          </div>
         </div>
       </div>
 
@@ -286,6 +326,32 @@ export function KidInvest({ childId }: { childId: string }) {
         )}
       </div>
 
+      {/*
+        원금·수익금·평가금액을 셋 다 적어 둔다. "지금 얼마" 만 보면 그게 내가 넣은
+        돈인지 불어난 돈인지 알 수 없다. 투자를 배우는 화면이니 셋을 나란히 둔다.
+      */}
+      <div className="card">
+        <div className="list-item">
+          <span>원금</span>
+          <span className="label">{money(cost)}</span>
+        </div>
+        <div className="list-item">
+          <span>수익금</span>
+          <span className={`label ${pnl >= 0 ? 'up' : 'down'}`}>
+            {signed(pnl)} ({pct(pnlPct)})
+          </span>
+        </div>
+        <div className="list-item">
+          <span>평가금액</span>
+          <span className="label" style={{ fontWeight: 500 }}>
+            {money(value)}
+          </span>
+        </div>
+      </div>
+      <div className="label muted">
+        원금은 내가 주식을 사는 데 쓴 돈, 평가금액은 지금 팔면 받는 돈이에요
+      </div>
+
       <div className="section-title">내가 가진 회사</div>
 
       {rows.map((p, i) => {
@@ -310,8 +376,14 @@ export function KidInvest({ childId }: { childId: string }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div>{money(p.value)}</div>
-                <div className={`label ${p.pnl >= 0 ? 'up' : 'down'}`}>{signed(p.pnl)}</div>
+                <div className={`label ${p.pnl >= 0 ? 'up' : 'down'}`}>
+                  {signed(p.pnl)} ({pct(p.pnlPct)})
+                </div>
               </div>
+            </div>
+            <div className="row label muted" style={{ marginTop: 4 }}>
+              <span>원금 {money(p.cost)}</span>
+              <span>평가금액 {money(p.value)}</span>
             </div>
             <div style={{ margin: '9px 0 5px' }}>
               <ProgressBar pct={p.weight} color={c.fill} />
