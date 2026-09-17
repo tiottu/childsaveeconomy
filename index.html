@@ -2,11 +2,21 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <!-- 상태바·홈 인디케이터 영역까지 채운다.
+         확대는 막지 않는다 — 금액을 키워 보고 싶은 사람이 있다. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#faf9f6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="우리아이통장" />
+    <!--
+      GitHub Pages 는 저장소 이름 아래 서브패스(/childsaveeconomy/)에 뜬다.
+      절대경로(/manifest.webmanifest)를 쓰면 도메인 루트를 가리켜서 404가 난다 —
+      실제로 그렇게 배포돼 있었다. %BASE_URL% 은 Vite 가 빌드 시점의 base 값으로
+      바꿔 주므로 서브패스에서도, 나중에 도메인이 바뀌어도 항상 맞는 경로가 된다.
+    -->
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icon.svg" />
     <title>우리아이통장</title>
   </head>
   <body>
