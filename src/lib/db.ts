@@ -89,7 +89,7 @@ export type Db = {
   /** 아이가 스스로 신청을 접는다 */
   cancelTradeRequest(id: string): Promise<void>
 
-  addGoal(goal: { child_id: string; title: string; target_amount: number; basis: 'cash' | 'total'; status: Goal['status'] }): Promise<void>
+  addGoal(goal: { child_id: string; title: string; target_amount: number; basis: Goal['basis']; status: Goal['status'] }): Promise<void>
   setGoalStatus(id: string, status: Goal['status']): Promise<void>
 
   // ---------------------------------------------------------------- 칭찬도장

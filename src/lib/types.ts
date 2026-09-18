@@ -105,8 +105,19 @@ export type Goal = {
   id: string
   child_id: string
   title: string
+  /**
+   * 목표까지 필요한 값. basis 가 'stamps' 면 원이 아니라 도장 개수다.
+   * 같은 칸을 재사용한다 — 어차피 정수라 둘 다 담을 수 있고, 표만 하나 더 늘리는 건
+   * basis 하나 늘리는 것보다 훨씬 큰 변경이다.
+   */
   target_amount: number
-  basis: 'cash' | 'total'
+  /**
+   * 'cash'/'total' : 돈 목표 — 현금 또는 총자산과 비교한다.
+   * 'stamps'       : 칭찬도장 목표 — 지금까지 받은 도장 총합(레벨 계산과 같은 수)과 비교한다.
+   *                  보상으로 도장을 써도(redeem) 이 목표는 줄지 않는다 — 그때그때 받는
+   *                  작은 보상과, 오래 모아서 이루는 큰 목표를 같은 숫자로 묶으면 안 된다.
+   */
+  basis: 'cash' | 'total' | 'stamps'
   status: 'requested' | 'active' | 'achieved' | 'canceled'
 }
 

@@ -1,14 +1,26 @@
 import { useState } from 'react'
-import { ProgressBar, colorOf } from '../components/ui'
-import { goalProgress, weeksToGoal } from '../lib/compute'
+import { ProgressBar, Toggle, colorOf } from '../components/ui'
+import { goalHave, goalProgress, weeksToGoal } from '../lib/compute'
 import { money } from '../lib/format'
 import { useData, useStore } from '../state/store'
 import type { ChildAsset, Goal } from '../lib/types'
+
+/** 목표 값을 basis 에 맞게 읽는다. 도장은 돈이 아니니 원을 붙이면 안 된다. */
+function goalAmount(n: number, basis: Goal['basis']): string {
+  return basis === 'stamps' ? `도장 ${n}개` : money(n)
+}
+
+const BASIS_LABEL: Record<Goal['basis'], string> = {
+  cash: '현금 기준',
+  total: '총자산 기준',
+  stamps: '칭찬도장 기준',
+}
 
 function GoalCard({
   goal,
   asset,
   weekly,
+  earnedStamps,
   index,
   onApprove,
   onCancel,
@@ -18,14 +30,17 @@ function GoalCard({
   goal: Goal
   asset: ChildAsset
   weekly: number
+  /** 지금까지 받은 도장 총합. 도장 목표일 때만 쓴다. */
+  earnedStamps: number
   index: number
   onApprove?: () => void
   onCancel?: () => void
   onAchieve?: () => void
   onUndo?: () => void
 }) {
-  const progress = goalProgress(goal.target_amount, goal.basis, asset)
+  const progress = goalProgress(goal.target_amount, goal.basis, asset, earnedStamps)
   const weeks = weeksToGoal(goal.target_amount, goal.basis, asset, weekly)
+  const have = goalHave(goal.basis, asset, earnedStamps)
   const color = colorOf(index)
 
   if (goal.status === 'requested') {
@@ -37,7 +52,7 @@ function GoalCard({
         <div className="row" style={{ color: 'var(--warning-text)' }}>
           <div>
             <div style={{ fontWeight: 500 }}>{goal.title}</div>
-            <div style={{ fontSize: 12 }}>{money(goal.target_amount)} 신청</div>
+            <div style={{ fontSize: 12 }}>{goalAmount(goal.target_amount, goal.basis)} 신청</div>
           </div>
           {onApprove && (
             <button className="btn small" style={{ width: 'auto', padding: '6px 14px' }} onClick={onApprove}>
@@ -65,13 +80,13 @@ function GoalCard({
       </div>
       <div className="row label">
         <span>
-          {money(goal.basis === 'cash' ? asset.cash : asset.total)} / {money(goal.target_amount)}
+          {goalAmount(have, goal.basis)} / {goalAmount(goal.target_amount, goal.basis)}
         </span>
         <span>
           {goal.status === 'achieved'
             ? '달성'
             : weeks === null
-              ? goal.basis === 'cash' ? '현금 기준' : '총자산 기준'
+              ? BASIS_LABEL[goal.basis]
               : weeks === 0
                 ? '모았어요'
                 : `약 ${weeks}주 남음`}
@@ -109,7 +124,7 @@ function GoalCard({
 }
 
 export function ParentGoals() {
-  const { children, assets, goals } = useData()
+  const { children, assets, goals, stamps } = useData()
   const { db, reload } = useStore()
 
   async function setStatus(id: string, status: Goal['status']) {
@@ -125,6 +140,10 @@ export function ParentGoals() {
         const mine = goals.filter(
           (g) => g.child_id === child.id && g.status !== 'canceled',
         )
+        // 지금까지 받은 도장 총합 — 레벨 계산(profile.ts levelOf)과 같은 수다
+        const earnedStamps = stamps.filter(
+          (s) => s.child_id === child.id && (s.status === 'given' || s.status === 'used'),
+        ).length
         if (!asset) return null
         return (
           <div key={child.id} className="col">
@@ -136,6 +155,7 @@ export function ParentGoals() {
                 goal={g}
                 asset={asset}
                 weekly={child.weekly_allowance}
+                earnedStamps={earnedStamps}
                 index={i}
                 onApprove={() => void setStatus(g.id, 'active')}
                 onCancel={() => void setStatus(g.id, 'canceled')}
@@ -151,14 +171,19 @@ export function ParentGoals() {
 }
 
 export function KidGoals({ childId }: { childId: string }) {
-  const { children, assets, goals } = useData()
+  const { children, assets, goals, stamps } = useData()
   const { db, reload } = useStore()
 
   const child = children.find((c) => c.id === childId)
   const asset = assets.find((a) => a.child_id === childId)
   const mine = goals.filter((g) => g.child_id === childId && g.status !== 'canceled')
+  const earnedStamps = stamps.filter(
+    (s) => s.child_id === childId && (s.status === 'given' || s.status === 'used'),
+  ).length
 
   const [adding, setAdding] = useState(false)
+  // 저축 목표(돈) 인지 칭찬도장 목표인지. 둘은 입력칸 단위가 다르다 (원 vs 개).
+  const [basis, setBasis] = useState<'cash' | 'stamps'>('cash')
   const [title, setTitle] = useState('')
   const [target, setTarget] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -168,8 +193,8 @@ export function KidGoals({ childId }: { childId: string }) {
   async function request() {
     setError(null)
     const amount = Number(target.replace(/[^0-9]/g, ''))
-    if (!title.trim()) return setError('무엇을 사고 싶은지 적어 주세요')
-    if (!amount || amount <= 0) return setError('얼마인지 적어 주세요')
+    if (!title.trim()) return setError(basis === 'stamps' ? '무엇을 하고 싶은지 적어 주세요' : '무엇을 사고 싶은지 적어 주세요')
+    if (!amount || amount <= 0) return setError(basis === 'stamps' ? '도장 몇 개인지 적어 주세요' : '얼마인지 적어 주세요')
     if (!db) return setError('지금은 신청할 수 없어요')
 
     try {
@@ -177,7 +202,7 @@ export function KidGoals({ childId }: { childId: string }) {
         child_id: childId,
         title: title.trim(),
         target_amount: amount,
-        basis: 'cash',
+        basis,
         status: 'requested',
       })
       await reload()
@@ -194,18 +219,20 @@ export function KidGoals({ childId }: { childId: string }) {
       {mine.length === 0 && <div className="empty">아직 목표가 없어요</div>}
 
       {mine.map((g, i) => {
-        const remain = g.target_amount - (g.basis === 'cash' ? asset.cash : asset.total)
+        const have = g.basis === 'stamps' ? earnedStamps : g.basis === 'cash' ? asset.cash : asset.total
+        const remain = g.target_amount - have
         return (
           <div key={g.id}>
             <GoalCard
               goal={g}
               asset={asset}
               weekly={child.weekly_allowance}
+              earnedStamps={earnedStamps}
               index={i}
             />
             {g.status === 'active' && remain > 0 && (
               <div className="label muted" style={{ marginTop: 4 }}>
-                {money(remain)} 더 모으면 끝!
+                {g.basis === 'stamps' ? `도장 ${remain}개` : money(remain)} 더 모으면 끝!
               </div>
             )}
           </div>
@@ -216,10 +243,22 @@ export function KidGoals({ childId }: { childId: string }) {
 
       {adding ? (
         <div className="card col">
+          <Toggle
+            options={[
+              { key: 'cash', label: '저축 목표' },
+              { key: 'stamps', label: '칭찬도장 목표' },
+            ]}
+            value={basis}
+            onChange={(k) => {
+              setBasis(k as 'cash' | 'stamps')
+              setTarget('')
+              setError(null)
+            }}
+          />
           <input
             className="field"
             type="text"
-            placeholder="사고 싶은 것"
+            placeholder={basis === 'stamps' ? '하고 싶은 것' : '사고 싶은 것'}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -227,10 +266,16 @@ export function KidGoals({ childId }: { childId: string }) {
             className="field"
             type="text"
             inputMode="numeric"
-            placeholder="얼마예요?"
+            placeholder={basis === 'stamps' ? '도장 몇 개예요?' : '얼마예요?'}
             value={target ? Number(target).toLocaleString('ko-KR') : ''}
             onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ''))}
           />
+          {basis === 'stamps' && (
+            <div className="label muted">
+              지금까지 받은 도장 {earnedStamps}개를 기준으로 해요. 보상으로 도장을 써도 이
+              숫자는 그대로예요.
+            </div>
+          )}
           {error && <div className="error">{error}</div>}
           <div className="btn-row">
             <button className="btn" onClick={() => setAdding(false)}>

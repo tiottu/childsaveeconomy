@@ -1,4 +1,4 @@
-import type { CashTxn, ChildAsset, Child, Holding, Position, Quote, Trade } from './types'
+import type { CashTxn, ChildAsset, Child, Goal, Holding, Position, Quote, Trade } from './types'
 
 /** 원/달러 환율 티커. 네이버 reutersCode 기준. */
 export const FX_TICKER = 'FX_USDKRW'
@@ -132,27 +132,41 @@ export function pnlPct(asset: ChildAsset): number {
   return asset.invest_cost > 0 ? (asset.pnl / asset.invest_cost) * 100 : 0
 }
 
-/** 목표 진행률 (0~100). basis 에 따라 현금 또는 총자산을 기준으로 한다. */
+/**
+ * 목표의 "지금까지 모은 값". basis 에 따라 다른 걸 본다.
+ *   cash/total : 지금 현금 또는 총자산
+ *   stamps     : 지금까지 받은 도장 총합(given+used) — 레벨 계산과 같은 수다.
+ *                보상으로 도장을 써도 이 숫자는 줄지 않는다. 오래 모아 이루는
+ *                목표가 그때그때 받는 작은 보상 때문에 되돌아가면 안 된다.
+ */
+export function goalHave(basis: Goal['basis'], asset: ChildAsset, earnedStamps: number): number {
+  if (basis === 'stamps') return earnedStamps
+  return basis === 'cash' ? asset.cash : asset.total
+}
+
+/** 목표 진행률 (0~100). */
 export function goalProgress(
   target: number,
-  basis: 'cash' | 'total',
+  basis: Goal['basis'],
   asset: ChildAsset,
+  earnedStamps = 0,
 ): number {
-  const have = basis === 'cash' ? asset.cash : asset.total
   if (target <= 0) return 0
-  return Math.min((have / target) * 100, 100)
+  return Math.min((goalHave(basis, asset, earnedStamps) / target) * 100, 100)
 }
 
 /**
  * 목표까지 남은 주 수. 주간 용돈으로만 모을 때의 추정치.
- * 용돈이 0이면 계산할 수 없으므로 null.
+ * 용돈이 0이면 계산할 수 없으므로 null. 도장 목표는 한 주에 몇 개 받을지 정해진 게
+ * 없어서 추정 자체가 의미 없다 — 언제나 null.
  */
 export function weeksToGoal(
   target: number,
-  basis: 'cash' | 'total',
+  basis: Goal['basis'],
   asset: ChildAsset,
   weeklyAllowance: number,
 ): number | null {
+  if (basis === 'stamps') return null
   if (weeklyAllowance <= 0) return null
   const have = basis === 'cash' ? asset.cash : asset.total
   const remain = target - have
