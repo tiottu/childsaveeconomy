@@ -1,4 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- 아이 통장 앱 아이콘 — 귀여운 저금통. 배경은 앱 테마의 accent-bg 를 그대로 쓴다. -->
   <rect width="192" height="192" rx="42" fill="#e6f1fb"/>
-  <path d="M60 66h12l14 28 14-28h12l-20 39h14v10h-18v8h18v10h-18v13H76v-13H58v-10h18v-8H58v-10h14z" fill="#185fa5"/>
+
+  <!-- 그림자 -->
+  <ellipse cx="98" cy="150" rx="46" ry="7" fill="#185fa5" opacity="0.10"/>
+
+  <!-- 꼬리 -->
+  <path d="M144 96 q10 -4 8 6 q-2 8 -10 6" fill="none" stroke="#e8829f" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- 귀 -->
+  <path d="M64 68 q-6 -14 10 -14 q10 0 6 12 Z" fill="#f5a8bf"/>
+  <path d="M118 68 q6 -14 -10 -14 q-10 0 -6 12 Z" fill="#f5a8bf"/>
+
+  <!-- 몸통 -->
+  <ellipse cx="96" cy="104" rx="52" ry="38" fill="#f7b6cb"/>
+
+  <!-- 다리 -->
+  <rect x="62" y="132" width="14" height="16" rx="6" fill="#e8829f"/>
+  <rect x="116" y="132" width="14" height="16" rx="6" fill="#e8829f"/>
+
+  <!-- 동전 저금 구멍(등 위) -->
+  <rect x="82" y="66" width="28" height="7" rx="3.5" fill="#a35b71"/>
+
+  <!-- 반쯤 들어가는 동전 -->
+  <g transform="rotate(-18 118 58)">
+    <circle cx="118" cy="58" r="13" fill="#f0b429"/>
+    <circle cx="118" cy="58" r="13" fill="none" stroke="#c8871a" stroke-width="2"/>
+    <text x="118" y="63" font-family="Arial, sans-serif" font-size="14" font-weight="700"
+          fill="#c8871a" text-anchor="middle">₩</text>
+  </g>
+
+  <!-- 코(주둥이) -->
+  <ellipse cx="132" cy="106" rx="16" ry="12" fill="#f2c3d4"/>
+  <ellipse cx="127" cy="106" rx="2.6" ry="3.4" fill="#a35b71"/>
+  <ellipse cx="137" cy="106" rx="2.6" ry="3.4" fill="#a35b71"/>
+
+  <!-- 눈 (웃는 눈) -->
+  <path d="M84 96 q5 -7 10 0" fill="none" stroke="#5a3040" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="106" cy="92" r="3.6" fill="#5a3040"/>
+
+  <!-- 볼 -->
+  <circle cx="92" cy="106" r="6" fill="#ef95ae" opacity="0.7"/>
 </svg>

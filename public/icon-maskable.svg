@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!--
+    마스커블 아이콘 — 배경을 캔버스 끝까지 꽉 채운다(모서리를 미리 둥글리지 않는다).
+    OS가 원형/스퀴클 등으로 알아서 자르므로, 저금통 몸통이 중앙 지름 80%
+    안전 영역(반지름 76.8, 중심 96,96) 안에 들어오도록 icon.svg보다 조금
+    작게, 중앙으로 옮겨 그렸다.
+  -->
+  <rect width="192" height="192" fill="#e6f1fb"/>
+
+  <ellipse cx="97" cy="146" rx="38" ry="6" fill="#185fa5" opacity="0.10"/>
+
+  <path d="M136 100 q8 -3 6 5 q-1 6 -8 5" fill="none" stroke="#e8829f" stroke-width="4" stroke-linecap="round"/>
+
+  <path d="M70 76 q-5 -11 8 -11 q8 0 5 10 Z" fill="#f5a8bf"/>
+  <path d="M114 76 q5 -11 -8 -11 q-8 0 -5 10 Z" fill="#f5a8bf"/>
+
+  <ellipse cx="96" cy="106" rx="42" ry="31" fill="#f7b6cb"/>
+
+  <rect x="70" y="129" width="11" height="13" rx="5" fill="#e8829f"/>
+  <rect x="111" y="129" width="11" height="13" rx="5" fill="#e8829f"/>
+
+  <rect x="84" y="79" width="23" height="6" rx="3" fill="#a35b71"/>
+
+  <g transform="rotate(-18 116 72)">
+    <circle cx="116" cy="72" r="10.5" fill="#f0b429"/>
+    <circle cx="116" cy="72" r="10.5" fill="none" stroke="#c8871a" stroke-width="1.6"/>
+    <text x="116" y="76.5" font-family="Arial, sans-serif" font-size="11.5" font-weight="700"
+          fill="#c8871a" text-anchor="middle">₩</text>
+  </g>
+
+  <ellipse cx="127" cy="107" rx="13" ry="9.7" fill="#f2c3d4"/>
+  <ellipse cx="123" cy="107" rx="2.1" ry="2.7" fill="#a35b71"/>
+  <ellipse cx="131" cy="107" rx="2.1" ry="2.7" fill="#a35b71"/>
+
+  <path d="M85 99 q4 -5.5 8 0" fill="none" stroke="#5a3040" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="103" cy="96" r="2.9" fill="#5a3040"/>
+
+  <circle cx="90" cy="107" r="4.8" fill="#ef95ae" opacity="0.7"/>
+</svg>
