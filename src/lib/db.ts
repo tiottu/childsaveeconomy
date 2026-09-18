@@ -52,6 +52,11 @@ export type Db = {
    * RLS 로는 "이 컬럼만" 을 막을 수 없어서 emblem 한 칸만 건드리는 함수를 쓴다.
    */
   setEmblem(childId: string, emblem: string): Promise<void>
+  /**
+   * 보상으로 받고 싶은 것 적기. 엠블럼과 같은 이유로 아이 본인이 할 수 있어야 한다 —
+   * child 표에 직접 쓸 권한이 없으니 이 칸만 건드리는 함수를 따로 둔다.
+   */
+  setRewardWish(childId: string, wish: string | null): Promise<void>
 
   addCashTxn(txn: NewCashTxn): Promise<void>
   /**

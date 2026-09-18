@@ -251,6 +251,7 @@ export function createMockDb(): Db {
         payday: input.payday,
         sort_order: store.children.length + 1,
         emblem: null,
+        reward_wish: null,
       })
       commit()
       return childId
@@ -269,6 +270,14 @@ export function createMockDb(): Db {
       const c = store.children.find((x) => x.id === childId)
       if (!c) throw new Error('아이를 찾을 수 없습니다')
       c.emblem = emblem
+      commit()
+    },
+
+    async setRewardWish(childId, wish) {
+      sync()
+      const c = store.children.find((x) => x.id === childId)
+      if (!c) throw new Error('아이를 찾을 수 없습니다')
+      c.reward_wish = wish?.trim() || null
       commit()
     },
 

@@ -171,6 +171,24 @@ export function createSupabaseDb(): Db {
       if (direct) throw new Error(direct.message)
     },
 
+    async setRewardWish(id, wish) {
+      // setEmblem 과 같은 이유로 함수를 먼저 쓰고, 부모 계정이면 직접 고치는 쪽으로 넘어간다.
+      const { error } = await sb.rpc('set_my_reward_wish', { p_wish: wish })
+      if (!error) return
+
+      const missing =
+        error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      if (missing) {
+        throw new Error('보상 소원 기능이 아직 서버에 올라가지 않았습니다 (set_my_reward_wish)')
+      }
+
+      const { error: direct } = await sb
+        .from('child')
+        .update({ reward_wish: wish?.trim() || null })
+        .eq('id', id)
+      if (direct) throw new Error(direct.message)
+    },
+
     async addCashTxn(txn: NewCashTxn) {
       const { error } = await sb.from('cash_txn').insert(txn)
       if (error) throw new Error(error.message)

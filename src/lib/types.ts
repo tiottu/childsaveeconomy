@@ -14,6 +14,11 @@ export type Child = {
   sort_order: number
   /** 아이가 고른 엠블럼. 안 골랐으면 null — 이름으로 하나 정해서 보여준다. */
   emblem: string | null
+  /**
+   * 보상으로 받고 싶은 것. 아이가 칭찬도장 화면에서 직접 적는다.
+   * 부모가 보상을 줄 때 이 값을 그대로 쓰거나 참고해서 정한다.
+   */
+  reward_wish: string | null
 }
 
 export type CashTxn = {

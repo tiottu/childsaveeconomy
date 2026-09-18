@@ -109,6 +109,15 @@ export function ParentStamps({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /*
+    도장을 주는 것도, 보상을 주는 것도 실제로 값을 바꾸는 행동이다. 한 번 눌렀다고
+    바로 처리하지 않고, "정말 처리할까요?" 를 한 번 더 물은 뒤에야 실행한다.
+    거절("이번엔 아니야")은 되돌리기 쉬운 쪽이라 확인을 두지 않는다.
+    값은 무엇을 확인 중인지 나타낸다 — 신청 도장은 그 id, 직접 찍기/보상 주기는
+    고정 키를 쓴다.
+  */
+  const [confirming, setConfirming] = useState<string | null>(null)
+
   const child = children.find((c) => c.id === childId)
   const goal = settings.stamp_goal
   const { waiting, given, rejected, done } = split(stamps, childId)
@@ -127,7 +136,27 @@ export function ParentStamps({
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+      setConfirming(null)
     }
+  }
+
+  /** 확인 문구 + 취소/네 버튼 한 줄. 눌러야 할 행동 바로 아래에 붙인다. */
+  function ConfirmBar({ text, onYes }: { text: string; onYes: () => void }) {
+    return (
+      <div style={{ marginTop: 10 }}>
+        <div className="label" style={{ marginBottom: 6 }}>
+          {text}
+        </div>
+        <div className="btn-row">
+          <button className="btn small" disabled={busy} onClick={() => setConfirming(null)}>
+            취소
+          </button>
+          <button className="btn small primary" disabled={busy} onClick={onYes}>
+            {busy ? '처리 중…' : '네, 맞아요'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -171,22 +200,29 @@ export function ParentStamps({
               <div className="label muted" style={{ marginTop: 2 }}>
                 {child.name}이 신청 · {dayLabel(s.created_at.slice(0, 10))}
               </div>
-              <div className="btn-row" style={{ marginTop: 10 }}>
-                <button
-                  className="btn small primary"
-                  disabled={busy}
-                  onClick={() => void run(() => db!.decideStamp(s.id, true))}
-                >
-                  도장 주기
-                </button>
-                <button
-                  className="btn small"
-                  disabled={busy}
-                  onClick={() => void run(() => db!.decideStamp(s.id, false))}
-                >
-                  이번엔 아니야
-                </button>
-              </div>
+              {confirming === s.id ? (
+                <ConfirmBar
+                  text={`정말 ${child.name}에게 도장을 줄까요?`}
+                  onYes={() => void run(() => db!.decideStamp(s.id, true))}
+                />
+              ) : (
+                <div className="btn-row" style={{ marginTop: 10 }}>
+                  <button
+                    className="btn small primary"
+                    disabled={busy}
+                    onClick={() => setConfirming(s.id)}
+                  >
+                    도장 주기
+                  </button>
+                  <button
+                    className="btn small"
+                    disabled={busy}
+                    onClick={() => void run(() => db!.decideStamp(s.id, false))}
+                  >
+                    이번엔 아니야
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </>
@@ -203,22 +239,41 @@ export function ParentStamps({
           onChange={(e) => setReason(e.target.value)}
         />
       </Field>
-      <button
-        className="btn primary"
-        disabled={busy}
-        onClick={() =>
-          void run(async () => {
-            await db!.giveStamp(childId, reason.trim() || null)
-            setReason('')
-          })
-        }
-      >
-        {child.name}에게 도장 찍어주기
-      </button>
+      {confirming === 'give' ? (
+        <ConfirmBar
+          text={`정말 ${child.name}에게 도장을 찍어줄까요?`}
+          onYes={() =>
+            void run(async () => {
+              await db!.giveStamp(childId, reason.trim() || null)
+              setReason('')
+            })
+          }
+        />
+      ) : (
+        <button className="btn primary" disabled={busy} onClick={() => setConfirming('give')}>
+          {child.name}에게 도장 찍어주기
+        </button>
+      )}
 
       <div className="section-title">보상 주기</div>
       {given.length >= goal ? (
         <>
+          {/* 아이가 미리 적어 둔 소원이 있으면 보여준다 — 부모가 매번 새로 지어내지 않아도 된다 */}
+          {child.reward_wish && (
+            <div className="card row" style={{ borderColor: 'var(--accent-border)' }}>
+              <div>
+                <div className="label">{child.name}가 받고 싶어하는 것</div>
+                <div style={{ marginTop: 2 }}>{child.reward_wish}</div>
+              </div>
+              <button
+                className="btn small"
+                style={{ width: 'auto', padding: '6px 12px' }}
+                onClick={() => setRewardTitle(child.reward_wish ?? '')}
+              >
+                이걸로 채우기
+              </button>
+            </div>
+          )}
           <Field label="무엇을 해줄까요">
             <input
               className="field"
@@ -229,18 +284,21 @@ export function ParentStamps({
               onChange={(e) => setRewardTitle(e.target.value)}
             />
           </Field>
-          <button
-            className="btn primary"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                await db!.redeemStamps(childId, rewardTitle)
-                setRewardTitle('')
-              })
-            }
-          >
-            도장 {goal}개로 보상 주기
-          </button>
+          {confirming === 'redeem' ? (
+            <ConfirmBar
+              text={`도장 ${goal}개를 쓰고 "${rewardTitle || '보상'}" 을 정말 줄까요?`}
+              onYes={() =>
+                void run(async () => {
+                  await db!.redeemStamps(childId, rewardTitle)
+                  setRewardTitle('')
+                })
+              }
+            />
+          ) : (
+            <button className="btn primary" disabled={busy} onClick={() => setConfirming('redeem')}>
+              도장 {goal}개로 보상 주기
+            </button>
+          )}
           <div className="label muted">
             도장 {goal}개가 사라지고 아래 기록에 남습니다. 도장판은 다시 비워집니다.
           </div>
@@ -285,6 +343,12 @@ export function KidStamps({ childId }: { childId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
 
+  // 받고 싶은 것 — 저장된 값과 따로 들고 있다가 "저장" 을 눌러야 반영한다.
+  // 부모 화면에 곧바로 보이는 값이니, 타이핑 중간 글자가 새어 나가면 안 된다.
+  const [wish, setWish] = useState<string | null>(null)
+  const [wishSaving, setWishSaving] = useState(false)
+  const [wishSaved, setWishSaved] = useState(false)
+
   const child = children.find((c) => c.id === childId)
   const goal = settings.stamp_goal
   const { waiting, given, rejected } = split(stamps, childId)
@@ -292,6 +356,25 @@ export function KidStamps({ childId }: { childId: string }) {
   const left = Math.max(0, goal - given.length)
 
   if (!child) return <div className="empty">정보를 찾을 수 없어요</div>
+
+  // wish 가 null 이면 아직 입력칸을 안 건드린 것 — 서버 값을 그대로 보여준다.
+  // 한 번이라도 타이핑했으면(null 이 아니면) 그 뒤로는 입력값을 우선한다.
+  const wishValue = wish ?? child.reward_wish ?? ''
+
+  async function saveWish() {
+    if (!db) return
+    setWishSaving(true)
+    setWishSaved(false)
+    try {
+      await db.setRewardWish(childId, wishValue)
+      await reload()
+      setWishSaved(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setWishSaving(false)
+    }
+  }
 
   async function request() {
     const text = reason.trim()
@@ -339,6 +422,30 @@ export function KidStamps({ childId }: { childId: string }) {
           {left === 0 ? '보상을 받을 수 있어요' : `도장 ${left}개 남았어요`}
         </div>
       </div>
+
+      {/*
+        보상을 부모가 마음대로 정하지 않고, 뭘 받고 싶은지 아이가 직접 적어 둔다.
+        도장을 다 모으기 전에도 미리 적어 둘 수 있다 — 모으는 동안 뭘 위해 모으는지
+        보여야 재미있다.
+      */}
+      <div className="section-title">받고 싶은 것</div>
+      <Field label="보상으로 받고 싶은 것 (안 적어도 돼요)">
+        <input
+          className="field"
+          type="text"
+          placeholder="예: 조립 로봇 장난감"
+          value={wishValue}
+          maxLength={40}
+          onChange={(e) => {
+            setWish(e.target.value)
+            setWishSaved(false)
+          }}
+        />
+      </Field>
+      <button className="btn" disabled={wishSaving} onClick={() => void saveWish()}>
+        {wishSaving ? '저장 중…' : '저장'}
+      </button>
+      {wishSaved && <div className="label muted">저장했어요. 부모님 화면에도 보여요.</div>}
 
       <div className="section-title">도장 신청</div>
       <Field label="무엇을 잘했는지 적기">

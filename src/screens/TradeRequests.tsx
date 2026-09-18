@@ -318,6 +318,8 @@ export function ParentTradeRequests({ childId }: { childId: string }) {
   const { db, reload } = useStore()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // 실제 매매·현금이 움직이는 행동이다. 한 번 더 "정말 맞나요" 를 물은 뒤에만 처리한다.
+  const [confirming, setConfirming] = useState<string | null>(null)
 
   const waiting = tradeRequests.filter((r) => r.child_id === childId && r.status === 'requested')
   const child = children.find((c) => c.id === childId)
@@ -339,6 +341,7 @@ export function ParentTradeRequests({ childId }: { childId: string }) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(null)
+      setConfirming(null)
     }
   }
 
@@ -388,22 +391,42 @@ export function ParentTradeRequests({ childId }: { childId: string }) {
               </div>
             )}
 
-            <div className="btn-row" style={{ marginTop: 10 }}>
-              <button
-                className="btn small"
-                disabled={busy === r.id}
-                onClick={() => void decide(r, false)}
-              >
-                이번엔 아니야
-              </button>
-              <button
-                className="btn small primary"
-                disabled={busy === r.id}
-                onClick={() => void decide(r, true)}
-              >
-                {busy === r.id ? '처리 중…' : '승인하고 거래'}
-              </button>
-            </div>
+            {confirming === r.id ? (
+              <div style={{ marginTop: 10 }}>
+                <div className="label" style={{ marginBottom: 6 }}>
+                  정말 {money(estimate)}에 {r.direction === 'buy' ? '매수' : '매도'} 할까요?
+                </div>
+                <div className="btn-row">
+                  <button
+                    className="btn small"
+                    disabled={busy === r.id}
+                    onClick={() => setConfirming(null)}
+                  >
+                    취소
+                  </button>
+                  <button
+                    className="btn small primary"
+                    disabled={busy === r.id}
+                    onClick={() => void decide(r, true)}
+                  >
+                    {busy === r.id ? '처리 중…' : '네, 거래할게요'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="btn-row" style={{ marginTop: 10 }}>
+                <button
+                  className="btn small"
+                  disabled={busy === r.id}
+                  onClick={() => void decide(r, false)}
+                >
+                  이번엔 아니야
+                </button>
+                <button className="btn small primary" onClick={() => setConfirming(r.id)}>
+                  승인하고 거래
+                </button>
+              </div>
+            )}
           </div>
         )
       })}
