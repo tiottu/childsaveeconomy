@@ -1,44 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
-  <!-- 아이 통장 앱 아이콘 — 귀여운 저금통. 배경은 앱 테마의 accent-bg 를 그대로 쓴다. -->
+  <!-- 아이 통장 앱 아이콘 — 남자아이 · 여자아이가 동전을 함께 들고 있는 모습. -->
   <rect width="192" height="192" rx="42" fill="#e6f1fb"/>
 
   <!-- 그림자 -->
-  <ellipse cx="98" cy="150" rx="46" ry="7" fill="#185fa5" opacity="0.10"/>
+  <ellipse cx="96" cy="163" rx="56" ry="7" fill="#185fa5" opacity="0.10"/>
 
-  <!-- 꼬리 -->
-  <path d="M144 96 q10 -4 8 6 q-2 8 -10 6" fill="none" stroke="#e8829f" stroke-width="5" stroke-linecap="round"/>
+  <!-- 남자아이 몸통(셔츠) -->
+  <path d="M34 142 L36 106 Q36 94 54 94 Q72 94 72 106 L72 142 Z" fill="#378add"/>
+  <!-- 여자아이 몸통(원피스) -->
+  <path d="M120 142 L120 106 Q120 94 138 94 Q156 94 158 106 L160 142 Z" fill="#f28fa8"/>
 
-  <!-- 귀 -->
-  <path d="M64 68 q-6 -14 10 -14 q10 0 6 12 Z" fill="#f5a8bf"/>
-  <path d="M118 68 q6 -14 -10 -14 q-10 0 -6 12 Z" fill="#f5a8bf"/>
+  <!-- 팔 — 가운데 동전 쪽으로 뻗는다 -->
+  <rect x="66" y="116" width="24" height="10" rx="5" fill="#ffd9b3"/>
+  <rect x="102" y="116" width="24" height="10" rx="5" fill="#ffd9b3"/>
 
-  <!-- 몸통 -->
-  <ellipse cx="96" cy="104" rx="52" ry="38" fill="#f7b6cb"/>
+  <!-- 남자아이 머리 -->
+  <circle cx="54" cy="74" r="19" fill="#ffd9b3"/>
+  <path d="M35 74 A19 19 0 0 1 73 74 Z" fill="#4a3728"/>
+  <circle cx="47" cy="76" r="2.3" fill="#3a2a20"/>
+  <circle cx="61" cy="76" r="2.3" fill="#3a2a20"/>
+  <path d="M48 84 Q54 89 60 84" fill="none" stroke="#a35b45" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="43" cy="82" r="4.2" fill="#f5a3a3" opacity="0.6"/>
+  <circle cx="65" cy="82" r="4.2" fill="#f5a3a3" opacity="0.6"/>
 
-  <!-- 다리 -->
-  <rect x="62" y="132" width="14" height="16" rx="6" fill="#e8829f"/>
-  <rect x="116" y="132" width="14" height="16" rx="6" fill="#e8829f"/>
+  <!-- 여자아이 머리 -->
+  <circle cx="138" cy="74" r="19" fill="#ffd9b3"/>
+  <circle cx="117" cy="80" r="8" fill="#6b4423"/>
+  <circle cx="159" cy="80" r="8" fill="#6b4423"/>
+  <path d="M119 74 A19 19 0 0 1 157 74 Z" fill="#6b4423"/>
+  <circle cx="131" cy="76" r="2.3" fill="#3a2a20"/>
+  <circle cx="145" cy="76" r="2.3" fill="#3a2a20"/>
+  <path d="M132 84 Q138 89 144 84" fill="none" stroke="#a35b45" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="127" cy="82" r="4.2" fill="#f5a3a3" opacity="0.6"/>
+  <circle cx="149" cy="82" r="4.2" fill="#f5a3a3" opacity="0.6"/>
 
-  <!-- 동전 저금 구멍(등 위) -->
-  <rect x="82" y="66" width="28" height="7" rx="3.5" fill="#a35b71"/>
-
-  <!-- 반쯤 들어가는 동전 -->
-  <g transform="rotate(-18 118 58)">
-    <circle cx="118" cy="58" r="13" fill="#f0b429"/>
-    <circle cx="118" cy="58" r="13" fill="none" stroke="#c8871a" stroke-width="2"/>
-    <text x="118" y="63" font-family="Arial, sans-serif" font-size="14" font-weight="700"
-          fill="#c8871a" text-anchor="middle">₩</text>
-  </g>
-
-  <!-- 코(주둥이) -->
-  <ellipse cx="132" cy="106" rx="16" ry="12" fill="#f2c3d4"/>
-  <ellipse cx="127" cy="106" rx="2.6" ry="3.4" fill="#a35b71"/>
-  <ellipse cx="137" cy="106" rx="2.6" ry="3.4" fill="#a35b71"/>
-
-  <!-- 눈 (웃는 눈) -->
-  <path d="M84 96 q5 -7 10 0" fill="none" stroke="#5a3040" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="106" cy="92" r="3.6" fill="#5a3040"/>
-
-  <!-- 볼 -->
-  <circle cx="92" cy="106" r="6" fill="#ef95ae" opacity="0.7"/>
+  <!-- 가운데 동전 — 둘이 같이 든다 -->
+  <circle cx="96" cy="122" r="32" fill="#f0b429" stroke="#c8871a" stroke-width="3"/>
+  <ellipse cx="86" cy="111" rx="9" ry="6" fill="#fff" opacity="0.35"/>
+  <text x="96" y="132" font-family="Arial, sans-serif" font-size="30" font-weight="700"
+        fill="#8a5a12" text-anchor="middle">₩</text>
 </svg>
