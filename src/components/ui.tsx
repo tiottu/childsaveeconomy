@@ -1,5 +1,38 @@
 import type { ReactNode } from 'react'
 
+/**
+ * 금액 하나를 가리거나 보여준다.
+ *
+ * 통장 화면은 다른 사람 앞에서도 열어 볼 일이 많다 (전철, 교실). 자산이 화면에
+ * 그대로 떠 있으면 곤란하다. 그래서 처음엔 가려 두고, 금액을 직접 눌러야 보인다 —
+ * 카드 전체를 누르면 다른 화면으로 넘어가는 곳이 많아서, 금액 글자에서만 클릭이
+ * 먹게 하고 부모 요소로 번지지 않게 막는다(stopPropagation).
+ *
+ * 화면을 나갔다 돌아오면 다시 가려진다 — 쓰는 쪽에서 이 값을 담은 state 가 매번
+ * false 로 새로 시작하는 것을 그대로 이용한다. 매번 열 때마다 안전한 기본값이다.
+ */
+export function Hideable({
+  visible,
+  onToggle,
+  children,
+}: {
+  visible: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+      style={{ cursor: 'pointer' }}
+    >
+      {visible ? children : '●●●,●●●원'}
+    </span>
+  )
+}
+
 export function Screen({
   title,
   onBack,

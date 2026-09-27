@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { cashWeight, pnlPct } from '../lib/compute'
 import { asOfLabel, money, pct, signed } from '../lib/format'
 import { EmblemTile, emblemOf } from '../components/Emblem'
-import { Avatar, MixBar } from '../components/ui'
+import { Avatar, Hideable, MixBar } from '../components/ui'
 import { useData } from '../state/store'
 
 export function ParentHome({
@@ -19,6 +20,11 @@ export function ParentHome({
   onOpenRequests: (childId: string) => void
 }) {
   const { children, assets, quotes, tradeRequests, stamps } = useData()
+
+  // 처음엔 가려 둔다. 이 화면에 새로 들어올 때마다(다른 탭 갔다 오는 것 포함)
+  // 초기화되는 게 맞다 — 계속 켜 두면 가리는 의미가 없다.
+  const [amountsVisible, setAmountsVisible] = useState(false)
+  const toggleAmounts = () => setAmountsVisible((v) => !v)
 
   /*
     기다리는 신청은 첫 화면에서 알려 준다. 투자 탭을 열어야만 보인다면 아이는
@@ -48,19 +54,38 @@ export function ParentHome({
           <span className="label">전체 총자산</span>
           {oldest && <span className="label muted">{asOfLabel(oldest)}</span>}
         </div>
-        <div className="big">{money(total)}</div>
-        <div className={`label ${pnl >= 0 ? 'up' : 'down'}`}>
-          평가손익 {signed(pnl)} ({pct(overallPct)})
+        <div className="big">
+          <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+            {money(total)}
+          </Hideable>
         </div>
+        <div className={`label ${pnl >= 0 ? 'up' : 'down'}`}>
+          평가손익{' '}
+          <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+            {signed(pnl)}
+          </Hideable>{' '}
+          ({pct(overallPct)})
+        </div>
+        {!amountsVisible && (
+          <div className="label muted" style={{ marginTop: 2 }}>
+            눌러서 보기
+          </div>
+        )}
         <div style={{ marginTop: 10 }}>
           <MixBar cashPct={cashPct} />
         </div>
         <div className="row label" style={{ marginTop: 5 }}>
           <span>
-            <span style={{ color: 'var(--accent-fill)' }}>■</span> 현금 {money(totalCash)}
+            <span style={{ color: 'var(--accent-fill)' }}>■</span> 현금{' '}
+            <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+              {money(totalCash)}
+            </Hideable>
           </span>
           <span>
-            <span style={{ color: 'var(--success-fill)' }}>■</span> 투자 {money(totalInvest)}
+            <span style={{ color: 'var(--success-fill)' }}>■</span> 투자{' '}
+            <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+              {money(totalInvest)}
+            </Hideable>
           </span>
         </div>
       </div>
@@ -115,12 +140,21 @@ export function ParentHome({
                 <div>
                   <div>{a.name}</div>
                   {child && (
-                    <div className="label">주 {money(child.weekly_allowance)}</div>
+                    <div className="label">
+                      주{' '}
+                      <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+                        {money(child.weekly_allowance)}
+                      </Hideable>
+                    </div>
                   )}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className="mid">{money(a.total)}</div>
+                <div className="mid">
+                  <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+                    {money(a.total)}
+                  </Hideable>
+                </div>
                 {a.invest_cost > 0 && (
                   <div className={`label ${a.pnl >= 0 ? 'up' : 'down'}`}>{pct(p)}</div>
                 )}
@@ -130,7 +164,14 @@ export function ParentHome({
               <MixBar cashPct={cashWeight(a)} />
             </div>
             <div className="label">
-              현금 {money(a.cash)} · 투자 {money(a.invest)}
+              현금{' '}
+              <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+                {money(a.cash)}
+              </Hideable>{' '}
+              · 투자{' '}
+              <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+                {money(a.invest)}
+              </Hideable>
             </div>
           </button>
         )

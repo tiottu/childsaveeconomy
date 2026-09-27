@@ -1,6 +1,6 @@
 import { AssetChart } from '../components/AssetChart'
 import { EMBLEMS, EmblemTile, RankedEmblem, emblemOf, type EmblemKey } from '../components/Emblem'
-import { MixBar, ProgressBar, TickerBadge, colorOf } from '../components/ui'
+import { Hideable, MixBar, ProgressBar, TickerBadge, colorOf } from '../components/ui'
 import { cashWeight, monthlyChange, pnlPct } from '../lib/compute'
 import { monthlyHistory } from '../lib/history'
 import {
@@ -93,6 +93,9 @@ function ProfileCard({ child, level }: { child: Child; level: Level }) {
 
 export function KidHome({ childId }: { childId: string }) {
   const { children, assets, cash, trades, stamps, rewards, goals } = useData()
+  // 부모 홈과 같은 이유로 처음엔 가려 둔다 — 통장은 다른 친구들 앞에서도 열어 본다.
+  const [amountsVisible, setAmountsVisible] = useState(false)
+  const toggleAmounts = () => setAmountsVisible((v) => !v)
   const child = children.find((c) => c.id === childId)
   const asset = assets.find((a) => a.child_id === childId)
   const txns = cash[childId] ?? []
@@ -132,20 +135,39 @@ export function KidHome({ childId }: { childId: string }) {
           <span className="label">내 전체 재산</span>
           {asset.invest_cost > 0 && (
             <span className={`label ${asset.pnl >= 0 ? 'up' : 'down'}`}>
-              주식 {signed(asset.pnl)} ({pct(pnlPct(asset))})
+              주식{' '}
+              <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+                {signed(asset.pnl)}
+              </Hideable>{' '}
+              ({pct(pnlPct(asset))})
             </span>
           )}
         </div>
-        <div className="big">{money(asset.total)}</div>
+        <div className="big">
+          <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+            {money(asset.total)}
+          </Hideable>
+        </div>
+        {!amountsVisible && (
+          <div className="label muted" style={{ marginTop: 2 }}>
+            눌러서 보기
+          </div>
+        )}
         <div style={{ marginTop: 10 }}>
           <MixBar cashPct={cashWeight(asset)} />
         </div>
         <div className="row label" style={{ marginTop: 5 }}>
           <span>
-            <span style={{ color: 'var(--accent-fill)' }}>■</span> 현금 {money(asset.cash)}
+            <span style={{ color: 'var(--accent-fill)' }}>■</span> 현금{' '}
+            <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+              {money(asset.cash)}
+            </Hideable>
           </span>
           <span>
-            <span style={{ color: 'var(--success-fill)' }}>■</span> 주식 {money(asset.invest)}
+            <span style={{ color: 'var(--success-fill)' }}>■</span> 주식{' '}
+            <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+              {money(asset.invest)}
+            </Hideable>
           </span>
         </div>
       </div>
@@ -153,7 +175,11 @@ export function KidHome({ childId }: { childId: string }) {
       <div className="stat-grid">
         <div className="stat">
           <div className="label">이번달 모은 돈</div>
-          <div className={`stat-value ${month >= 0 ? 'up' : 'down'}`}>{signed(month)}</div>
+          <div className={`stat-value ${month >= 0 ? 'up' : 'down'}`}>
+            <Hideable visible={amountsVisible} onToggle={toggleAmounts}>
+              {signed(month)}
+            </Hideable>
+          </div>
         </div>
         <div className="stat">
           <div className="label">연속 저축</div>
