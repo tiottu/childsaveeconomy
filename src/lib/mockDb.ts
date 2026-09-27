@@ -565,6 +565,24 @@ export function createMockDb(): Db {
       commit()
     },
 
+    async refreshQuotes() {
+      // 로컬 모드는 실제 서버를 부를 수 없다. 수동이 아닌 시세의 기준시각만
+      // 지금으로 당겨서, 버튼을 눌렀을 때 뭔가 반응은 있게 해 둔다.
+      sync()
+      let updated = 0
+      let skipped = 0
+      for (const q of store.quotes) {
+        if (q.source === 'manual') {
+          skipped++
+          continue
+        }
+        q.as_of = new Date().toISOString()
+        updated++
+      }
+      commit()
+      return { updated, skipped, failed: [] }
+    },
+
     async updateSettings(patch) {
       store.settings = { ...store.settings, ...patch }
       commit()

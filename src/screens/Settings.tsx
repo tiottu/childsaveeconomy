@@ -28,6 +28,29 @@ export function Settings() {
 
   /** 백업 결과 한 줄. 공유를 취소하면 아무 말도 하지 않는다. */
   const [saved, setSaved] = useState<string | null>(null)
+
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshResult, setRefreshResult] = useState<string | null>(null)
+
+  async function refreshNow() {
+    if (!db) return
+    setRefreshing(true)
+    setRefreshResult(null)
+    setError(null)
+    try {
+      const r = await db.refreshQuotes()
+      await reload()
+      setRefreshResult(
+        r.failed.length > 0
+          ? `${r.updated}개 갱신, ${r.failed.length}개 실패 (${r.failed.join(', ')})`
+          : `${r.updated}개 갱신했습니다`,
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const [backing, setBacking] = useState(false)
 
   /** 우리 집 종목의 시세만. quote 표는 모든 가족이 같이 쓰는 캐시다. */
@@ -310,7 +333,7 @@ export function Settings() {
         <div className="list-item">
           <span>시세 갱신</span>
           <span className="label">
-            {usingSupabase ? `자동 · ${settings.quote_refresh_min}분` : '수동 입력'}
+            {usingSupabase ? `자동(설정 시) · ${settings.quote_refresh_min}분마다` : '수동 입력'}
           </span>
         </div>
         <button
@@ -326,6 +349,21 @@ export function Settings() {
           <span className="label">부모만</span>
         </div>
       </div>
+
+      {/*
+        "자동" 이라 적어 놨지만 실제로 주기마다 불러 주는 건 Supabase 쪽 Cron 이 따로
+        설정돼 있어야 한다 (대시보드에서 손으로 켜야 하는 항목이라 안 켜져 있을 수 있다).
+        그래서 그거와 별개로 언제든 바로 부를 수 있는 버튼을 둔다.
+      */}
+      {usingSupabase && (
+        <>
+          <button className="btn" disabled={refreshing} onClick={() => void refreshNow()}>
+            {refreshing ? '갱신 중…' : '지금 시세 갱신'}
+          </button>
+          {refreshResult && <div className="label muted">{refreshResult}</div>}
+          {error && <div className="error">{error}</div>}
+        </>
+      )}
 
       {editing === 'cap' && (
         <div className="card col">

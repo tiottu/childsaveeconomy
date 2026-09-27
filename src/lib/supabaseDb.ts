@@ -388,6 +388,22 @@ export function createSupabaseDb(): Db {
       if (error) throw new Error(error.message)
     },
 
+    async refreshQuotes() {
+      const { data, error } = await sb.functions.invoke('refresh-quotes')
+      if (error) {
+        // 배포 안 된 함수는 404 로 온다. "왜 안 되는지" 를 화면에서 바로 알 수 있어야 한다.
+        const status = (error as { context?: { status?: number } }).context?.status
+        if (status === 404) {
+          throw new Error(
+            '시세 갱신 기능이 아직 서버에 올라가지 않았습니다 (supabase functions deploy refresh-quotes)',
+          )
+        }
+        throw new Error(error.message)
+      }
+      const d = data as { updated?: number; skipped?: number; failed?: string[] } | null
+      return { updated: d?.updated ?? 0, skipped: d?.skipped ?? 0, failed: d?.failed ?? [] }
+    },
+
     async updateSettings(patch) {
       const { data } = await sb.from('settings').select('family_id').limit(1)
       const familyId = data?.[0]?.family_id

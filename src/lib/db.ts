@@ -115,6 +115,12 @@ export type Db = {
   setManualQuote(ticker: string, name: string, price: number, currency?: string): Promise<void>
   /** 시세 서버에서 받아온 값을 저장한다. 평가금액 계산이 최신 값을 쓰게 된다. */
   saveQuote(quote: Quote): Promise<void>
+  /**
+   * 지금 들고 있는 종목 전부(+환율)를 한 번에 새로 받아온다. 자동 주기 갱신이
+   * 설정돼 있지 않거나 실패했을 때, 부모가 직접 눌러서 최신값을 받을 길이다.
+   * source='manual' 로 손으로 넣은 값은 건드리지 않는다.
+   */
+  refreshQuotes(): Promise<{ updated: number; skipped: number; failed: string[] }>
   updateSettings(patch: Partial<Settings>): Promise<void>
 
   /** 데이터가 바뀌면 콜백을 부른다. 해제 함수를 돌려준다. */
