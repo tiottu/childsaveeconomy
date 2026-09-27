@@ -8,6 +8,12 @@ import type { ReactNode } from 'react'
  * 카드 전체를 누르면 다른 화면으로 넘어가는 곳이 많아서, 금액 글자에서만 클릭이
  * 먹게 하고 부모 요소로 번지지 않게 막는다(stopPropagation).
  *
+ * 처음엔 ●●●,●●●원 같은 글자로 가렸는데, 숫자 자릿수와 안 맞아 모양이 어색했다.
+ * 대신 실제 숫자를 그대로 두고 **흐리게(blur)** 만든다 — 은행 앱들이 흔히 쓰는
+ * 방식이다. 자릿수가 몇 자리든 자연스럽고, 누르면 스륵 선명해지는 느낌도 난다.
+ * 화면을 복사/캡처하면 숫자가 그대로 담길 수 있으니 보안이 아니라 "옆에서 슬쩍
+ * 보이는 것" 을 막는 용도로만 쓴다 — 그 정도면 충분하다.
+ *
  * 화면을 나갔다 돌아오면 다시 가려진다 — 쓰는 쪽에서 이 값을 담은 state 가 매번
  * false 로 새로 시작하는 것을 그대로 이용한다. 매번 열 때마다 안전한 기본값이다.
  */
@@ -26,9 +32,16 @@ export function Hideable({
         e.stopPropagation()
         onToggle()
       }}
-      style={{ cursor: 'pointer' }}
+      aria-label={visible ? undefined : '가려진 금액 · 눌러서 보기'}
+      style={{
+        cursor: 'pointer',
+        filter: visible ? 'none' : 'blur(7px)',
+        transition: 'filter 0.15s ease',
+        // 흐린 상태에서 드래그로 선택해 복사하면 흐림이 무의미해진다
+        userSelect: visible ? 'auto' : 'none',
+      }}
     >
-      {visible ? children : '●●●,●●●원'}
+      {children}
     </span>
   )
 }
